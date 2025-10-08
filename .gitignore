@@ -1,0 +1,377 @@
+# Global .gitignore for Signature AI Project
+
+# ===========================================
+# Environment Variables
+# ===========================================
+
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+supabase.env
+
+# ===========================================
+# Logs
+# ===========================================
+
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+logs/
+
+# ===========================================
+# Runtime Data
+# ===========================================
+
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# ===========================================
+# Coverage and Testing
+# ===========================================
+
+coverage/
+*.lcov
+.nyc_output
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ===========================================
+# Dependencies
+# ===========================================
+
+node_modules/
+jspm_packages/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# ===========================================
+# Build Outputs
+# ===========================================
+
+# Next.js
+.next/
+out/
+build/
+
+# Nuxt.js
+.nuxt
+dist
+
+# Gatsby
+.cache/
+public
+
+# Storybook
+.out
+.storybook-out
+
+# Parcel
+.parcel-cache
+
+# ===========================================
+# Python
+# ===========================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# ===========================================
+# Machine Learning / Data Science
+# ===========================================
+
+# Model files
+*.pth
+*.pt
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.joblib
+
+# Data files (large)
+*.csv
+*.tsv
+*.jsonl
+*.parquet
+*.feather
+*.npy
+
+# Large data directories
+data/
+datasets/
+embeddings/
+models/
+checkpoints/
+
+# Jupyter notebook outputs
+*.ipynb
+
+# MLflow
+mlruns/
+
+# Weights & Biases
+wandb/
+
+# ===========================================
+# Databases
+# ===========================================
+
+*.db
+*.sqlite
+*.sqlite3
+
+# ===========================================
+# Supabase
+# ===========================================
+
+# Supabase local development
+supabase/.branches/*
+supabase/.temp/*
+
+# ===========================================
+# Docker
+# ===========================================
+
+# Docker volumes
+docker-data/
+.dockerignore
+docker-compose.override.yml
+
+# ===========================================
+# Temporary Files
+# ===========================================
+
+tmp/
+temp/
+uploads/
+.local/
+local/
+
+# ===========================================
+# Editor Directories and Files
+# ===========================================
+
+# VSCode
+.vscode/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+*.mdc
+AGENTS_NOTES*.md
+
+# ===========================================
+# OS Generated Files
+# ===========================================
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===========================================
+# TypeScript
+# ===========================================
+
+*.tsbuildinfo
+next-env.d.ts
+
+# ===========================================
+# Vercel
+# ===========================================
+
+.vercel
+
+# ===========================================
+# Project Specific
+# ===========================================
+
+# Training data (large files)
+colab-training/data/
+colab-training/datasets/DeepSignDB/
+colab-training/datasets/SigComp/
+
+# Model artifacts
+colab-training/nn/*
+
+# Embeddings
+colab-training/data/emb/
+
+# Temporary files
+colab-training/data/tmp/
+vercel-site/data/tmp/
+
+# Build outputs
+vercel-site/.next/
+vercel-site/out/
+render-inference/build/
+render-inference/dist/
+
+# Backend specific
+render-inference/app/models/checkpoints/
+render-inference/app/logs/
+render-inference/model_cache/
+render-inference/embeddings_cache/
+
+# Frontend specific
+vercel-site/public/uploads/
+
+# Colab specific
+.colab/
+
+# Agent Notes (Cursor AI) - commented out for now
+# AGENTS_NOTES_*.md
+# TODO.md
+# *.agent.md
+
+# Temporary agent files
+.agent-temp/
+agent-cache/

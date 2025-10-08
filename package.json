@@ -1,0 +1,22 @@
+{
+  "name": "your-sign-ai",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "vercel-site",
+    "render-inference",
+    "colab-training"
+  ],
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "dotenv": "^17.2.3"
+  },
+  "scripts": {
+    "load-dsdb": "node scripts/load-dsdb.js",
+    "test-users": "node scripts/test-users.js",
+    "generate-pseudousers": "node scripts/db-generate-pseudousers.js",
+    "reset-db": "npx supabase db reset",
+    "reset-db-with-test-users": "npx supabase db reset && npm run test-users",
+    "reset-db-and-populate": "npx supabase db reset && npm run test-users && npm run generate-pseudousers"
+  }
+}
