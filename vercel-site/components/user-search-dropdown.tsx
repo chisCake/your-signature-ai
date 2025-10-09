@@ -127,7 +127,7 @@ export function UserSearchDropdown(props: UserSearchDropdownProps) {
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
-        const handler = (e: Event) => {
+        const handler = () => {
             runSearch();
         };
         el.addEventListener("trigger-search", handler as EventListener);

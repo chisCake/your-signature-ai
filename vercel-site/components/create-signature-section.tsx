@@ -4,7 +4,7 @@ import Canvas, { CanvasRef, DEFAULT_CANVAS_SIZE } from './canvas/canvas';
 import { Button } from './ui/button';
 import { CheckboxWithLabel } from './ui/checkbox-with-label';
 import { useState, useEffect, useRef } from "react";
-import { SaveOwnSignatureOptions, saveOwnSignature } from '@/lib/signature-utils';
+import { BaseSaveOptions, saveOwnSignature } from '@/lib/signature-utils';
 import { toast } from './ui/toast';
 
 interface CreateSignatureSectionProps {
@@ -12,7 +12,7 @@ interface CreateSignatureSectionProps {
   /**
    * Кастомная функция сохранения подписи. Если не указано – будет использован SignatureUtils.saveSignature
    */
-  saveSignature?: (options: Omit<SaveOwnSignatureOptions, "endpoint">) => Promise<string>;
+  saveSignature?: (options: Omit<BaseSaveOptions, "endpoint">) => Promise<string>;
   canvasClassName?: string;
 }
 
@@ -54,7 +54,7 @@ export default function CreateSignatureSection({
     const inputType = canvasRef.current.getInputType();
 
     try {
-      const saveFn = saveSignatureProp ?? (async (opts: Omit<SaveOwnSignatureOptions, "endpoint">) => saveOwnSignature(opts));
+      const saveFn = saveSignatureProp ?? (async (opts: Omit<BaseSaveOptions, "endpoint">) => saveOwnSignature(opts));
       await saveFn({
         points: signatureData,
         inputType: inputType ?? "mouse",

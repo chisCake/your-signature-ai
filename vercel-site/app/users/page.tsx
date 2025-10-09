@@ -1,6 +1,5 @@
 "use client";
 
-import { getUser } from "@/lib/auth-client-utils";
 import { getUsers, getPseudousers, getUserGenuineSignatures } from "@/lib/supabase/mod-utils";
 import { Profile, Pseudouser, User, SignatureGenuine, SignatureForged, createProfileUser, createPseudouserUser, getUserName, isProfile, isPseudouser } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { SignatureList, PreviewField } from "@/components/signature-list";
 import { useState, useEffect, useMemo } from "react";
 import { LoaderCircle, User as UserIcon, Users, Search, Filter, Calendar, Signature as SignatureIcon, Mail, Settings, Shield, Database, Edit, ExternalLink } from "lucide-react";
+import { getProfile } from "@/lib/supabase/user-utils";
 
 export default function UsersPage() {
     const [users, setUsers] = useState<Profile[]>([]);
@@ -18,7 +18,7 @@ export default function UsersPage() {
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [userSignatures, setUserSignatures] = useState<(SignatureGenuine | SignatureForged)[]>([]);
     const [userEmail, setUserEmail] = useState<string | null>(null);
-    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [currentUser, setCurrentUser] = useState<Profile | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [signaturesLoading, setSignaturesLoading] = useState<boolean>(false);
 
@@ -28,15 +28,13 @@ export default function UsersPage() {
 
     useEffect(() => {
         setLoading(true);
-        Promise.all([getUsers(), getPseudousers()])
-            .then(([usersData, pseudousersData]) => {
+        Promise.all([getUsers(), getPseudousers(), getProfile()])
+            .then(([usersData, pseudousersData, currentUserData]) => {
                 setUsers(usersData);
                 setPseudousers(pseudousersData);
+                setCurrentUser(currentUserData);
             })
             .finally(() => setLoading(false));
-
-        // Загружаем данные текущего пользователя
-        getUser().then(setCurrentUser);
     }, []);
 
     // Фильтрация пользователей
@@ -108,7 +106,7 @@ export default function UsersPage() {
         
         // Проверяем только для обычных пользователей
         if (isProfile(selectedUser)) {
-            return selectedUser.data.id === currentUser.sub;
+            return selectedUser.data.id === currentUser.id;
         }
         
         return false;

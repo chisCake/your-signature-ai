@@ -18,10 +18,10 @@ export function SignatureModal({
     isOpen,
     onClose,
 }: SignatureModalProps) {
-    if (!isOpen || !signature) return null;
-
     // Слушаем событие удаления подписи для автоматического закрытия модального окна
     useEffect(() => {
+        if (!isOpen || !signature) return;
+        
         const handleSignatureDeleted = (e: Event) => {
             const customEvent = e as CustomEvent;
             if (customEvent.detail?.id === signature.id) {
@@ -34,7 +34,9 @@ export function SignatureModal({
         return () => {
             window.removeEventListener("signatureDeleted", handleSignatureDeleted);
         };
-    }, [signature.id, onClose]);
+    }, [signature, onClose, isOpen]);
+
+    if (!isOpen || !signature) return null;
 
     const handleBackdropClick = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) {

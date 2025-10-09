@@ -3,19 +3,18 @@
 import CreateSignatureSection from "@/components/create-signature-section";
 import { Button } from "@/components/ui/button";
 import { DashboardSection } from "@/components/dashboard-section";
-import { Signature } from "@/lib/types";
+import { Profile, Signature } from "@/lib/types";
 import { SignatureList, PreviewField } from "@/components/signature-list";
 import { formatSignatureDate, getShortSignatureId } from "@/lib/signature-utils";
 import { User as UserIcon, Mail, Calendar, Shield, LoaderCircle } from "lucide-react";
 import { getSignatures } from "@/lib/supabase/user-utils";
-import { getUser } from "@/lib/auth-client-utils";
+import { getProfile } from "@/lib/supabase/user-utils";
 import { useState, useEffect, useCallback } from "react";
 
 export default function UserDashboard() {
-    const [allowForForgery, setAllowForForgery] = useState(true);
     const [signatures, setSignatures] = useState<Signature[]>([]);
     const [signaturesLoading, setSignaturesLoading] = useState(true);
-    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [currentUser, setCurrentUser] = useState<Profile | null>(null);
     const [userEmail, setUserEmail] = useState<string>("");
 
     // Загрузка подписей пользователя
@@ -34,9 +33,9 @@ export default function UserDashboard() {
     // Загрузка данных пользователя
     const fetchUserData = useCallback(async () => {
         try {
-            const userData = await getUser();
-            setCurrentUser(userData);
-            setUserEmail(userData!.email!);
+            const userData = await getProfile();
+            setCurrentUser(userData ?? null);
+            setUserEmail(userData?.email ?? "");
         } catch (error) {
             console.error("Ошибка загрузки данных пользователя:", error);
         }
@@ -47,11 +46,6 @@ export default function UserDashboard() {
     }, [fetchSignatures]);
 
     useEffect(() => {
-        const savedState = localStorage.getItem("allowForForgery");
-        if (savedState !== null) {
-            setAllowForForgery(JSON.parse(savedState));
-        }
-
         // Загружаем подписи и данные пользователя при инициализации
         fetchSignatures();
         fetchUserData();
@@ -63,11 +57,6 @@ export default function UserDashboard() {
             window.removeEventListener("signatureDeleted", signatureDeletedHandler);
         };
     }, [fetchSignatures, fetchUserData, signatureDeletedHandler]);
-
-    const handleCheckboxChange = (checked: boolean) => {
-        setAllowForForgery(checked);
-        localStorage.setItem("allowForForgery", JSON.stringify(checked));
-    };
 
     const bulkUpdateForgery = async (allow: boolean) => {
         if (!window.confirm(allow ? "Разрешить использование всех ваших подписей как примеров для подделки?" : "Запретить использование всех ваших подписей как примеров для подделки?")) {
@@ -124,14 +113,14 @@ export default function UserDashboard() {
                                 <label className="text-sm font-medium text-muted-foreground">Имя</label>
                                 <div className="text-lg font-semibold flex items-center gap-2">
                                     <UserIcon className="h-5 w-5" />
-                                    {currentUser.user_metadata?.display_name || "Не указано"}
+                                    {currentUser.display_name || "Не указано"}
                                 </div>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Роль</label>
                                 <div className="text-sm flex items-center gap-2 mt-1">
                                     <Shield className="h-4 w-4" />
-                                    {currentUser.user_metadata?.role || "user"}
+                                    {currentUser.role || "user"}
                                 </div>
                             </div>
                             <div>
@@ -151,7 +140,7 @@ export default function UserDashboard() {
                                 <label className="text-sm font-medium text-muted-foreground">Дата регистрации</label>
                                 <div className="text-sm text-muted-foreground flex items-center gap-1">
                                     <Calendar className="h-4 w-4" />
-                                    {currentUser.iat ? new Date(currentUser.iat * 1000).toLocaleDateString("ru-RU", {
+                                    {currentUser.created_at ? new Date(currentUser.created_at).toLocaleDateString("ru-RU", {
                                         year: "numeric",
                                         month: "long",
                                         day: "numeric"

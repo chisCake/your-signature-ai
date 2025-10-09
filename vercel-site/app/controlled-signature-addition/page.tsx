@@ -95,7 +95,7 @@ export default function ControlledSignatureAddition() {
                             setLatestResults(results);
                             setInputChanged(false); // Reset input changed flag when search completes
                         }}
-                        onInputChange={(q) => {
+                        onInputChange={() => {
                             setInputChanged(true); // Mark input as changed
                         }}
                     />

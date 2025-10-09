@@ -56,7 +56,7 @@ export interface Model {
   id: string;
   version: string;
   admin_id?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   description?: string;
   is_active: boolean;
   file_hash: string;
@@ -204,131 +204,124 @@ export function isSignatureBelongsToProfile(signature: Signature): boolean {
 // ========================================
 
 // Преобразование данных профиля из БД в интерфейс Profile
-export function mapToProfile(data: any): Profile {
+export function mapToProfile(data: unknown): Profile {
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    role: data.role,
-    display_name: data.display_name,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
-    email: data.email ?? null,
+    id: d.id as string,
+    role: d.role as UserRole,
+    display_name: d.display_name as string,
+    created_at: d.created_at as string,
+    updated_at: d.updated_at as string,
+    email: d.email as string | null,
   };
 }
 
 // Преобразование данных псевдопользователя из БД в интерфейс Pseudouser
-export function mapToPseudouser(data: any): Pseudouser {
+export function mapToPseudouser(data: unknown): Pseudouser {
   console.log(data);
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    name: data.name,
-    source: data.source,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: d.id as string,
+    name: d.name as string,
+    source: d.source as string,
+    created_at: d.created_at as string,
+    updated_at: d.updated_at as string,
   };
 }
 
 // Преобразование данных модели из БД в интерфейс Model
-export function mapToModel(data: any): Model {
+export function mapToModel(data: unknown): Model {
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    version: data.version,
-    admin_id: data.admin_id,
-    metadata: data.metadata,
-    description: data.description,
-    is_active: data.is_active,
-    file_hash: data.file_hash,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: d.id as string,
+    version: d.version as string,
+    admin_id: d.admin_id as string | undefined,
+    metadata: d.metadata as Record<string, unknown> | undefined,
+    description: d.description as string | undefined,
+    is_active: d.is_active as boolean,
+    file_hash: d.file_hash as string,
+    created_at: d.created_at as string,
+    updated_at: d.updated_at as string,
   };
 }
 
 // Преобразование данных подлинной подписи из БД в интерфейс SignatureGenuine
-export function mapToSignatureGenuine(data: any): SignatureGenuine {
+export function mapToSignatureGenuine(data: unknown): SignatureGenuine {
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    user_id: data.user_id,
-    pseudouser_id: data.pseudouser_id,
-    features_table: data.features_table,
-    input_type: data.input_type,
-    user_for_forgery: data.user_for_forgery,
-    mod_for_forgery: data.mod_for_forgery,
-    mod_for_dataset: data.mod_for_dataset,
-    name: data.name,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: d.id as string,
+    user_id: d.user_id as string | undefined,
+    pseudouser_id: d.pseudouser_id as string | undefined,
+    features_table: d.features_table as string,
+    input_type: d.input_type as 'mouse' | 'touch' | 'pen' | undefined,
+    user_for_forgery: d.user_for_forgery as boolean,
+    mod_for_forgery: d.mod_for_forgery as boolean,
+    mod_for_dataset: d.mod_for_dataset as boolean,
+    name: d.name as string,
+    created_at: d.created_at as string,
+    updated_at: d.updated_at as string,
   };
 }
 
 // Преобразование данных поддельной подписи из БД в интерфейс SignatureForged
-export function mapToSignatureForged(data: any): SignatureForged {
+export function mapToSignatureForged(data: unknown): SignatureForged {
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    original_signature_id: data.original_signature_id,
-    original_user_id: data.original_user_id,
-    original_pseudouser_id: data.original_pseudouser_id,
-    features_table: data.features_table,
-    input_type: data.input_type,
-    mod_for_dataset: data.mod_for_dataset,
-    score: data.score,
-    model_id: data.model_id,
-    forger_id: data.forger_id,
-    name: data.name,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: d.id as string,
+    original_signature_id: d.original_signature_id as string | undefined,
+    original_user_id: d.original_user_id as string | undefined,
+    original_pseudouser_id: d.original_pseudouser_id as string | undefined,
+    features_table: d.features_table as string,
+    input_type: d.input_type as 'mouse' | 'touch' | 'pen' | undefined,
+    mod_for_dataset: d.mod_for_dataset as boolean,
+    score: d.score as number | undefined,
+    model_id: d.model_id as string | undefined,
+    forger_id: d.forger_id as string | undefined,
+    name: d.name as string,
+    created_at: d.created_at as string,
+    updated_at: d.updated_at as string,
   };
 }
 
 // Преобразование данных эмбеддинга из БД в интерфейс Embedding
-export function mapToEmbedding(data: any): Embedding {
+export function mapToEmbedding(data: unknown): Embedding {
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    genuine_signature_id: data.genuine_signature_id,
-    forged_signature_id: data.forged_signature_id,
-    embedding_vector: data.embedding_vector,
-    dimension: data.dimension,
-    model_id: data.model_id,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: d.id as string,
+    genuine_signature_id: d.genuine_signature_id as string | undefined,
+    forged_signature_id: d.forged_signature_id as string | undefined,
+    embedding_vector: d.embedding_vector as number[],
+    dimension: d.dimension as number,
+    model_id: d.model_id as string,
+    created_at: d.created_at as string,
+    updated_at: d.updated_at as string,
   };
 }
 
 // Преобразование данных пользовательского эмбеддинга из БД в интерфейс UserEmbedding
-export function mapToUserEmbedding(data: any): UserEmbedding {
+export function mapToUserEmbedding(data: unknown): UserEmbedding {
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    user_id: data.user_id,
-    pseudouser_id: data.pseudouser_id,
-    embedding_vector: data.embedding_vector,
-    dimension: data.dimension,
-    model_id: data.model_id,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: d.id as string,
+    user_id: d.user_id as string | undefined,
+    pseudouser_id: d.pseudouser_id as string | undefined,
+    embedding_vector: d.embedding_vector as number[],
+    dimension: d.dimension as number,
+    model_id: d.model_id as string,
+    created_at: d.created_at as string,
+    updated_at: d.updated_at as string,
   };
 }
 
 // Преобразование данных админского токена из БД в интерфейс AdminToken
-export function mapToAdminToken(data: any): AdminToken {
+export function mapToAdminToken(data: unknown): AdminToken {
+  const d = data as Record<string, unknown>;
   return {
-    id: data.id,
-    admin_id: data.admin_id,
-    token_hash: data.token_hash,
-    created_at: data.created_at,
-    expires_at: data.expires_at,
-    revoked: data.revoked,
-  };
-}
-
-// Преобразование данных устаревшей подписи из БД в интерфейс SignatureLegacy
-export function mapToSignatureLegacy(data: any): SignatureLegacy {
-  return {
-    id: data.id,
-    user_id: data.user_id,
-    csv_header: data.csv_header,
-    csv_rows: data.csv_rows,
-    user_for_forgery: data.user_for_forgery,
-    mod_for_forgery: data.mod_for_forgery,
-    mod_for_dataset: data.mod_for_dataset,
-    created_at: data.created_at,
-    updated_at: data.updated_at,
+    id: d.id as string,
+    admin_id: d.admin_id as string,
+    token_hash: d.token_hash as string,
+    created_at: d.created_at as string,
+    expires_at: d.expires_at as string,
+    revoked: d.revoked as boolean,
   };
 }

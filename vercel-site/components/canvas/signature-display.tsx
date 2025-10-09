@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect, useCallback, memo, useState } from "react";
+import React, { useRef, useEffect, useCallback, memo, useState, useMemo } from "react";
 import { SignaturePoint } from '@/lib/types';
 import { RotateCcw, LoaderCircle } from "lucide-react";
 import { DEFAULT_CANVAS_SIZE } from "./canvas";
@@ -51,7 +51,7 @@ const SignatureDisplay = memo(React.forwardRef<SignatureDisplayRef, SignatureDis
   animationSpeed = 1.0,
   strokeColor = "#000000",
   strokeWidth = 2,
-  backgroundColor = "transparent",
+  // backgroundColor = "transparent",
   showPoints = false,
   centerSignature = true,
   bufferSize,
@@ -59,20 +59,27 @@ const SignatureDisplay = memo(React.forwardRef<SignatureDisplayRef, SignatureDis
   disablePlayButton = false
 }, ref) => {
   const [isLoading, setIsLoading] = useState(true);
+  
   // Нормализуем данные - всегда работаем с массивом массивов
-  const normalizedData = Array.isArray(signatureData[0])
-    ? signatureData as SignaturePoint[][]
-    : [signatureData as SignaturePoint[]];
+  const normalizedData = useMemo(() => {
+    return Array.isArray(signatureData[0])
+      ? signatureData as SignaturePoint[][]
+      : [signatureData as SignaturePoint[]];
+  }, [signatureData]);
 
   // Нормализуем цвета
-  const normalizedColors = Array.isArray(strokeColor)
-    ? strokeColor
-    : [strokeColor];
+  const normalizedColors = useMemo(() => {
+    return Array.isArray(strokeColor)
+      ? strokeColor
+      : [strokeColor];
+  }, [strokeColor]);
 
   // Нормализуем толщины
-  const normalizedWidths = Array.isArray(strokeWidth)
-    ? strokeWidth
-    : [strokeWidth];
+  const normalizedWidths = useMemo(() => {
+    return Array.isArray(strokeWidth)
+      ? strokeWidth
+      : [strokeWidth];
+  }, [strokeWidth]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
@@ -190,11 +197,11 @@ const SignatureDisplay = memo(React.forwardRef<SignatureDisplayRef, SignatureDis
           if (timeDiff <= 100) {
             // Если есть следующая точка, используем её для создания контрольной точки
             if (i < pointsToDraw.length - 1) {
-              const nextPoint = pointsToDraw[i + 1];
+              // const nextPoint = pointsToDraw[i + 1];
               const cp1x = prevPoint.x + (currentPoint.x - prevPoint.x) * 0.5;
               const cp1y = prevPoint.y + (currentPoint.y - prevPoint.y) * 0.5;
-              const cp2x = currentPoint.x - (nextPoint.x - currentPoint.x) * 0.5;
-              const cp2y = currentPoint.y - (nextPoint.y - currentPoint.y) * 0.5;
+              // const cp2x = currentPoint.x - (nextPoint.x - currentPoint.x) * 0.5;
+              // const cp2y = currentPoint.y - (nextPoint.y - currentPoint.y) * 0.5;
 
               ctx.quadraticCurveTo(cp1x, cp1y, currentPoint.x, currentPoint.y);
             } else {
@@ -214,14 +221,14 @@ const SignatureDisplay = memo(React.forwardRef<SignatureDisplayRef, SignatureDis
       // Показываем точки если нужно
       if (showPoints) {
         ctx.fillStyle = color;
-        pointsToDraw.forEach((point, index) => {
+        pointsToDraw.forEach((point) => {
           ctx.beginPath();
           ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
           ctx.fill();
         });
       }
     });
-  }, [centerSignature, getCenteredPoints, backgroundColor, normalizedColors, normalizedWidths, showPoints]);
+  }, [centerSignature, getCenteredPoints, normalizedColors, normalizedWidths, showPoints]);
 
   // Анимация множественных подписей
   const animateSignature = useCallback(() => {

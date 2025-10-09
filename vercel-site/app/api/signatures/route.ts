@@ -194,7 +194,7 @@ export async function PATCH(req: NextRequest) {
         }
     }
 
-    const results: any = {};
+    const results: Record<string, unknown> = {};
     const errors: string[] = [];
 
     // Обработка userForForgery
@@ -206,7 +206,7 @@ export async function PATCH(req: NextRequest) {
             try {
                 const result = await updateUserForForgery(user.sub, userForForgery);
                 Object.assign(results, result);
-            } catch (error) {
+            } catch {
                 errors.push("Failed to update user_for_forgery");
             }
         }
@@ -224,7 +224,7 @@ export async function PATCH(req: NextRequest) {
             try {
                 const result = await updateModForForgery(user.sub, modForForgery);
                 Object.assign(results, result);
-            } catch (error) {
+            } catch {
                 errors.push("Failed to update mod_for_forgery");
             }
         }
@@ -242,7 +242,7 @@ export async function PATCH(req: NextRequest) {
             try {
                 const result = await updateModForDataset(user.sub, modForDataset);
                 Object.assign(results, result);
-            } catch (error) {
+            } catch {
                 errors.push("Failed to update mod_for_dataset");
             }
         }

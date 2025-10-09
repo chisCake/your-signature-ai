@@ -1,4 +1,4 @@
-import { Signature, SignaturePoint, SignatureGenuine, SignatureForged } from "@/lib/types";
+import { Signature, SignaturePoint, SignatureGenuine } from "@/lib/types";
 import { toast } from "@/components/ui/toast";
 import { confirm } from "@/components/ui/alert-dialog";
 
@@ -9,7 +9,9 @@ export interface BaseSaveOptions {
   endpoint?: string;
 }
 
-export interface SaveOwnSignatureOptions extends BaseSaveOptions { }
+// export interface SaveOwnSignatureOptions extends BaseSaveOptions {
+//   // Extends BaseSaveOptions with no additional properties
+// }
 
 export interface SaveForAnotherSignatureOptions extends BaseSaveOptions {
   targetTable: "profiles" | "pseudousers";
@@ -196,9 +198,9 @@ export async function saveOwnSignature({
   inputType = "mouse",
   userForForgery: allowForForgery = false,
   endpoint = "/api/signatures",
-}: SaveOwnSignatureOptions): Promise<string> {
+}: BaseSaveOptions): Promise<string> {
   const csvData = pointsToCSV(points);
-  const body = { csvData, inputType, allowForForgery };
+  const body = { csvData, inputType, userForForgery: allowForForgery };
 
   const res = await fetch(endpoint, {
     method: "POST",
@@ -356,16 +358,17 @@ export function pointsToCSV(points: SignaturePoint[]): string {
   return "t,x,y,p\n" + csvRows.join("\n");
 }
 
-export function csvToPoints(signature: any): SignaturePoint[] {
+export function csvToPoints(signature: Signature): SignaturePoint[] {
   // Проверяем, есть ли features_table (новый формат)
   if ("features_table" in signature && signature.features_table) {
     return csvStringToPoints(signature.features_table);
   }
 
   // Старый формат с csv_header и csv_rows
-  const header = (signature.csv_header || "").trim();
-  const rows = (signature.csv_rows || "").trim();
-  const expected = "t,x,y,p";
+  const sig = signature as { csv_header?: string; csv_rows?: string };
+  // const header = (sig.csv_header || "").trim();
+  const rows = (sig.csv_rows || "").trim();
+  // const expected = "t,x,y,p";
   // допускаем другие заголовки, но пытаемся распарсить по порядку t,x,y,p
   const lines = rows.length ? rows.split("\n") : [];
   return lines.map((line: string) => {

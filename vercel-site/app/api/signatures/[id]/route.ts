@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser, isMod, canEditSignature } from "@/lib/auth-server-utils";
-import { deleteSignature, getGenuineSignature, updateModForDataset, updateModForForgery, updateUserForForgery } from "@/lib/supabase/queries";
+import { deleteSignature, getGenuineSignature, updateModForDataset, updateModForForgery } from "@/lib/supabase/queries";
 import { isSignatureBelongsToProfile } from "@/lib/types";
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // GET - возврат случайной подписи для подделки (id, features_table)
-export async function GET(req: NextRequest) {
+export async function GET() {
     const supabaseSR = createServiceClient();
 
     // Используем RPC функцию для получения случайной записи
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     if (data.user_id) insertBody.original_user_id = data.user_id;
     if (data.pseudouser_id) insertBody.original_pseudouser_id = data.pseudouser_id;
 
-    const { data: forgedData, error: forgedError } = await supabaseSR
+    const { error: forgedError } = await supabaseSR
         .from("forged_signatures")
         .insert(insertBody);
 

@@ -7,8 +7,9 @@ import { ToggleButton } from './ui/toggle-button';
 import { Badge } from './ui/badge';
 import { PreviewField } from './signature-list';
 import { deleteSignature, downloadSignatureAsPNG, generateSignaturePreview, toggleModForDataset, toggleModForForgery, toggleUserForForgery } from '@/lib/signature-utils';
-import { X, Download, Eye, EyeOff, ShieldCheck, ShieldX, Database, Ban } from "lucide-react";
+import Image from "next/image";
 import { getUser, isMod } from '@/lib/auth-client-utils'
+import { Download, Eye, EyeOff, ShieldCheck, ShieldX, Database, Ban, X } from "lucide-react";
 
 interface SignaturePreviewProps {
     signature: SignatureGenuine | SignatureForged;
@@ -50,19 +51,19 @@ export function SignaturePreview({
         if ("user_for_forgery" in signature) {
             setUserForForgery(signature.user_for_forgery ?? false);
         }
-    }, ["user_for_forgery" in signature ? signature.user_for_forgery : undefined]);
+    }, [signature]);
 
     useEffect(() => {
         if ("mod_for_forgery" in signature) {
             setModForForgery(signature.mod_for_forgery ?? false);
         }
-    }, ["mod_for_forgery" in signature ? signature.mod_for_forgery : undefined]);
+    }, [signature]);
 
     useEffect(() => {
         if ("mod_for_dataset" in signature) {
             setModForDataset(signature.mod_for_dataset ?? false);
         }
-    }, ["mod_for_dataset" in signature ? signature.mod_for_dataset : undefined]);
+    }, [signature]);
 
     // Listen to global updates from SignatureUtils
     useEffect(() => {
@@ -339,9 +340,11 @@ export function SignaturePreview({
             {/* Превью подписи */}
             {previewUrl && (
                 <div className="flex items-center justify-center mb-3">
-                    <img
+                    <Image
                         src={previewUrl}
                         alt="Превью подписи"
+                        width={400}
+                        height={200}
                         className="max-w-full object-contain"
                     />
                 </div>

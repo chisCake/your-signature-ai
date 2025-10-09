@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { SignaturePoint } from '@/lib/types';
 import Canvas, { CanvasRef } from '@/components/canvas/canvas';
 import { LoaderCircle } from "lucide-react";
+import { csvStringToPoints } from '@/lib/signature-utils';
 
 const CANVAS_SIZE = `w-[480px] h-[360px]
                      sm:w-[480px] sm:h-[360px]
@@ -23,7 +24,7 @@ export default function Home() {
     fetch("/api/forgery")
       .then(res => res.json())
       .then(data => {
-        const points = SignatureUtils.csvStringToPoints(data.features_table);
+        const points = csvStringToPoints(data.features_table);
         setOriginalSignatureId(data.id);
         setSignatureData(points);
       })
@@ -51,7 +52,7 @@ export default function Home() {
       fetch("/api/forgery", {
         method: "POST",
         body: JSON.stringify({ originalSignatureId: originalSignatureId, forgedSignatureData: signatureData, inputType: inputType }),
-      }).then(res => res.json()).then(data => {
+      }).then(_res => _res.json()).then(() => {
         // TODO: результаты оценки моделью
 
         canvas.clear();

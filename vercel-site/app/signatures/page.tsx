@@ -79,7 +79,7 @@ export default function SignaturesPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [category, perPage, page]);
+    }, [category, perPage, page, client]);
 
     useEffect(() => {
         loadData();

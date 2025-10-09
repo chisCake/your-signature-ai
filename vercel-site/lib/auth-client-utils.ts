@@ -8,14 +8,15 @@ export async function getUser() {
     const { data: sessionData } = await supabase.auth.getSession();
     const sessionUser = sessionData?.session?.user;
     if (!sessionUser) return null;
+    console.log("getUser (client):", sessionUser);
     return sessionUser;
 }
 
-export async function isMod(user: any = null) {
+export async function isMod(user: unknown = null) {
     return hasRole(user || await getUser(), "mod");
 };
 
-export async function isAdmin(user: any = null) {
+export async function isAdmin(user: unknown = null) {
     return hasRole(user || await getUser(), "admin");
 };
 
