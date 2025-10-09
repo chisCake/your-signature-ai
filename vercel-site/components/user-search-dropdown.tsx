@@ -92,7 +92,7 @@ export function UserSearchDropdown(props: UserSearchDropdownProps) {
     }, [updateDropdownPosition]);
 
     const runSearch = useCallback(async () => {
-        console.log("runSearch", allowed, query, maxResults);
+        // console.log("runSearch", allowed, query, maxResults);
         if (!allowed) {
             setResults([]);
             setIsLoading(false);

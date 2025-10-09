@@ -25,6 +25,7 @@ export default function Home() {
       .then(res => res.json())
       .then(data => {
         const points = csvStringToPoints(data.features_table);
+        console.log("points", points);
         setOriginalSignatureId(data.id);
         setSignatureData(points);
       })

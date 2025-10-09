@@ -8,7 +8,7 @@ export async function getUser() {
     const { data: sessionData } = await supabase.auth.getSession();
     const sessionUser = sessionData?.session?.user;
     if (!sessionUser) return null;
-    console.log("getUser (client):", sessionUser);
+    // console.log("getUser (client):", sessionUser);
     return sessionUser;
 }
 

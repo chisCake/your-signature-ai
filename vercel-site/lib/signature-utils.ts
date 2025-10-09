@@ -234,7 +234,7 @@ export async function saveForAnotherSignature({
       targetId,
     };
 
-    console.log("body", body);
+    // console.log("body", body);
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -335,7 +335,7 @@ export async function deleteSignature(signature: Signature): Promise<boolean> {
 
     if (!res.ok) {
       const msg = await res.json().catch(() => ({}));
-      console.log(msg);
+      // console.log(msg);
       toast({ description: msg.error || "Ошибка удаления подписи", type: "background" });
       return false;
     }

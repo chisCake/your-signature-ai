@@ -407,6 +407,32 @@ const SignatureDisplay = memo(React.forwardRef<SignatureDisplayRef, SignatureDis
     };
   }, []);
 
+  useEffect(() => {
+    // После завершения загрузки данных убеждаемся, что canvas уже создан
+    if (isLoading) return;
+
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Устанавливаем актуальный размер canvas согласно контейнеру
+    const { width: containerWidth, height: containerHeight } = container.getBoundingClientRect();
+    if (canvas.width !== containerWidth || canvas.height !== containerHeight) {
+      canvas.width = containerWidth;
+      canvas.height = containerHeight;
+    }
+
+    // Прорисовываем подпись, если она ещё не была нарисована
+    if (animated) {
+      drawSignature(ctx, normalizedData, 0);
+    } else {
+      drawSignature(ctx, normalizedData);
+    }
+  }, [isLoading, normalizedData, animated, drawSignature]);
+
   return (
     <div ref={containerRef} className={`relative inline-block border-2 border-gray-200 rounded-lg bg-white shadow-lg ${className}`}>
       {isLoading ? (
