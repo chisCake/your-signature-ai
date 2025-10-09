@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { ToggleButton } from './ui/toggle-button';
 import { Badge } from './ui/badge';
 import { PreviewField } from './signature-list';
-import { deleteSignature, downloadSignatureAsPNG, generateSignaturePreview, toggleModForDataset, toggleModForForgery, toggleUserForForgery } from '@/lib/signature-utils';
+import { deleteSignature, downloadSignatureAsPNG, generateSignaturePNG, toggleModForDataset, toggleModForForgery, toggleUserForForgery } from '@/lib/signature-utils';
 import Image from "next/image";
 import { getUser, isMod } from '@/lib/auth-client-utils'
 import { Download, Eye, EyeOff, ShieldCheck, ShieldX, Database, Ban, X } from "lucide-react";
@@ -84,7 +84,32 @@ export function SignaturePreview({
         return () => window.removeEventListener("signatureUpdated", handler);
     }, [signature.id]);
 
-    const previewUrl = generateSignaturePreview(signature);
+    const [previewUrl, setPreviewUrl] = useState<string>("");
+
+    useEffect(() => {
+        const updatePreview = () => {
+            const ratio = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+            const cssWidth = 400;
+            const cssHeight = 200;
+
+            // Генерируем изображение в физических пикселях
+            const dataUrl = generateSignaturePNG(
+                signature,
+                Math.round(cssWidth * ratio),
+                Math.round(cssHeight * ratio),
+                Math.max(2, Math.floor(2 * ratio)) // масштабируем толщину линии
+            );
+            setPreviewUrl(dataUrl);
+        };
+
+        updatePreview();
+
+        // Обновляем при изменении DPR (например, если окно переносится между экранами)
+        const mediaQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+        const handler = () => updatePreview();
+        mediaQuery.addEventListener("change", handler);
+        return () => mediaQuery.removeEventListener("change", handler);
+    }, [signature]);
 
     const handleDownload = (e: React.MouseEvent) => {
         e.stopPropagation();
