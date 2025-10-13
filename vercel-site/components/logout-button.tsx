@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
 import { createBrowserClient } from '@/lib/supabase/client';
 import { Button } from './ui/button';
-import { useRouter } from "next/navigation";
+import { useRouter } from 'next/navigation';
 import { invalidateProfileCache } from '@/lib/supabase/user-utils';
 
 export function LogoutButton() {
@@ -12,7 +12,7 @@ export function LogoutButton() {
     const supabase = createBrowserClient();
     await supabase.auth.signOut();
     invalidateProfileCache();
-    router.push("/auth/login");
+    router.push('/auth/login');
   };
 
   return <Button onClick={logout}>Logout</Button>;

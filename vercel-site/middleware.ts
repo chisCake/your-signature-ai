@@ -1,5 +1,5 @@
-import { updateSession } from "@/lib/supabase/middleware";
-import { type NextRequest } from "next/server";
+import { updateSession } from '@/lib/supabase/middleware';
+import { type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
   return await updateSession(request);
@@ -16,6 +16,6 @@ export const config = {
      * - test (test page - public access)
      * Feel free to modify this pattern to include more paths.
      */
-    "/((?!_next/static|_next/image|favicon.ico|test|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    '/((?!_next/static|_next/image|favicon.ico|test|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

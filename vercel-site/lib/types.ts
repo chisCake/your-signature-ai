@@ -43,7 +43,7 @@ export interface Pseudouser {
 }
 
 // Объединенный тип для пользователей
-export type User = 
+export type User =
   | { type: 'user'; data: Profile }
   | { type: 'pseudouser'; data: Pseudouser };
 
@@ -142,7 +142,7 @@ export interface SignatureLegacy {
   id: string;
   user_id?: string;
   csv_header: string; // первая строка CSV, например: "t,x,y,p"
-  csv_rows: string;   // строки данных CSV без заголовка
+  csv_rows: string; // строки данных CSV без заголовка
   user_for_forgery?: boolean;
   mod_for_forgery?: boolean;
   mod_for_dataset?: boolean;
@@ -159,17 +159,27 @@ export function isProfile(user: User): user is { type: 'user'; data: Profile } {
   return user.type === 'user';
 }
 
-export function isPseudouser(user: User): user is { type: 'pseudouser'; data: Pseudouser } {
+export function isPseudouser(
+  user: User
+): user is { type: 'pseudouser'; data: Pseudouser } {
   return user.type === 'pseudouser';
 }
 
 // Type guards для определения типа подписи
-export function isSignatureGenuine(signature: Signature): signature is SignatureGenuine {
+export function isSignatureGenuine(
+  signature: Signature
+): signature is SignatureGenuine {
   return 'user_id' in signature || 'pseudouser_id' in signature;
 }
 
-export function isSignatureForged(signature: Signature): signature is SignatureForged {
-  return 'original_signature_id' in signature || 'original_user_id' in signature || 'original_pseudouser_id' in signature;
+export function isSignatureForged(
+  signature: Signature
+): signature is SignatureForged {
+  return (
+    'original_signature_id' in signature ||
+    'original_user_id' in signature ||
+    'original_pseudouser_id' in signature
+  );
 }
 
 // Вспомогательные функции для создания объектов User
@@ -196,7 +206,9 @@ export function getUserId(user: User): string {
 
 // Подпись принадлежит настоящему пользователю или псевдопользователю
 export function isSignatureBelongsToProfile(signature: Signature): boolean {
-  return isSignatureGenuine(signature) ? signature.user_id !== null : signature.original_user_id !== null;
+  return isSignatureGenuine(signature)
+    ? signature.user_id !== null
+    : signature.original_user_id !== null;
 }
 
 // ========================================
@@ -218,7 +230,6 @@ export function mapToProfile(data: unknown): Profile {
 
 // Преобразование данных псевдопользователя из БД в интерфейс Pseudouser
 export function mapToPseudouser(data: unknown): Pseudouser {
-  console.log(data);
   const d = data as Record<string, unknown>;
   return {
     id: d.id as string,

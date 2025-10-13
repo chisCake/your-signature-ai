@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { cn } from '@/lib/utils';
 import { createBrowserClient } from '@/lib/supabase/client';
@@ -12,17 +12,17 @@ import {
 } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export function SignUpForm({
   className,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
+}: React.ComponentPropsWithoutRef<'div'>) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [repeatPassword, setRepeatPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -34,7 +34,7 @@ export function SignUpForm({
     setError(null);
 
     if (password !== repeatPassword) {
-      setError("Passwords do not match");
+      setError('Passwords do not match');
       setIsLoading(false);
       return;
     }
@@ -48,67 +48,67 @@ export function SignUpForm({
         },
       });
       if (error) throw error;
-      router.push("/dashboard");
+      router.push('/dashboard');
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred");
+      setError(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Регистрация</CardTitle>
+          <CardTitle className='text-2xl'>Регистрация</CardTitle>
           <CardDescription>Создайте новый аккаунт</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+            <div className='flex flex-col gap-6'>
+              <div className='grid gap-2'>
+                <Label htmlFor='email'>Email</Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="login@example.com"
+                  id='email'
+                  type='email'
+                  placeholder='login@example.com'
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={e => setEmail(e.target.value)}
                 />
               </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="password">Пароль</Label>
+              <div className='grid gap-2'>
+                <div className='flex items-center'>
+                  <Label htmlFor='password'>Пароль</Label>
                 </div>
                 <Input
-                  id="password"
-                  type="password"
+                  id='password'
+                  type='password'
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                 />
               </div>
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Повторите пароль</Label>
+              <div className='grid gap-2'>
+                <div className='flex items-center'>
+                  <Label htmlFor='repeat-password'>Повторите пароль</Label>
                 </div>
                 <Input
-                  id="repeat-password"
-                  type="password"
+                  id='repeat-password'
+                  type='password'
                   required
                   value={repeatPassword}
-                  onChange={(e) => setRepeatPassword(e.target.value)}
+                  onChange={e => setRepeatPassword(e.target.value)}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Создание аккаунта..." : "Зарегистрироваться"}
+              {error && <p className='text-sm text-red-500'>{error}</p>}
+              <Button type='submit' className='w-full' disabled={isLoading}>
+                {isLoading ? 'Создание аккаунта...' : 'Зарегистрироваться'}
               </Button>
             </div>
-            <div className="mt-4 text-center text-sm">
-              Уже есть аккаунт?{" "}
-              <Link href="/auth/login" className="underline underline-offset-4">
+            <div className='mt-4 text-center text-sm'>
+              Уже есть аккаунт?{' '}
+              <Link href='/auth/login' className='underline underline-offset-4'>
                 Войти
               </Link>
             </div>

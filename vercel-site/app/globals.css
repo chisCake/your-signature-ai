@@ -63,15 +63,107 @@
   * {
     @apply border-border;
   }
+
+  html {
+    /* Предотвращает зум на iOS при двойном тапе */
+    font-size: 16px;
+    /* Плавная прокрутка */
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Улучшенное сглаживание шрифтов */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Предотвращает горизонтальную прокрутку */
+    overflow-x: hidden;
+  }
+
+  /* Убираем выделение при тапе на мобильных */
+  button,
+  a,
+  input,
+  textarea,
+  [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Улучшенная прокрутка для мобильных */
+  * {
+    scrollbar-width: thin;
+  }
+
+  /* Стили для скроллбара в WebKit браузерах */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 
   h1 {
-    @apply text-3xl font-bold;
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold;
   }
 
   h2 {
-    @apply text-2xl font-bold;
+    @apply text-xl sm:text-2xl lg:text-3xl font-bold;
+  }
+
+  h3 {
+    @apply text-lg sm:text-xl font-semibold;
+  }
+
+  /* Адаптивные контейнеры */
+  .container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      padding: 0 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding: 0 2rem;
+    }
+  }
+
+  /* Touch-friendly элементы */
+  @media (hover: none) and (pointer: coarse) {
+    button,
+    [role='button'],
+    a {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Исключение для кнопок в навигации, чтобы сохранить выравнивание */
+    nav button {
+      min-height: auto;
+      min-width: auto;
+    }
+
+    /* Специальное правило для мобильной навигации */
+    .lg button {
+      min-height: auto;
+      min-width: auto;
+    }
   }
 }

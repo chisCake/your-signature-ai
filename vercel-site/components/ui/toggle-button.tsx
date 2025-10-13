@@ -1,15 +1,22 @@
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { LucideIcon } from "lucide-react";
+import * as React from 'react';
+import { Slot } from '@radix-ui/react-slot';
+import { LucideIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { buttonVariants } from "./button";
+import { buttonVariants } from './button';
 
 export interface ToggleButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean;
-  variant?: "default" | "confirm" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
+  variant?:
+    | 'default'
+    | 'confirm'
+    | 'destructive'
+    | 'outline'
+    | 'secondary'
+    | 'ghost'
+    | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
   isToggled?: boolean;
   onToggledChange?: (toggled: boolean) => void;
   iconOff?: LucideIcon;
@@ -21,24 +28,27 @@ export interface ToggleButtonProps
 }
 
 const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
-  ({ 
-    className, 
-    variant, 
-    size, 
-    asChild = false, 
-    isToggled = false,
-    onToggledChange,
-    iconOff,
-    iconOn,
-    iconSize = 16,
-    showText = false,
-    textOff,
-    textOn,
-    onClick,
-    ...props 
-  }, ref) => {
-    const Comp = asChild ? Slot : "button";
-    
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      isToggled = false,
+      onToggledChange,
+      iconOff,
+      iconOn,
+      iconSize = 16,
+      showText = false,
+      textOff,
+      textOn,
+      onClick,
+      ...props
+    },
+    ref
+  ) => {
+    const Comp = asChild ? Slot : 'button';
+
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
       if (onToggledChange) {
         onToggledChange(!isToggled);
@@ -59,12 +69,14 @@ const ToggleButton = React.forwardRef<HTMLButtonElement, ToggleButtonProps>(
         {...props}
       >
         {isToggled && iconOn && React.createElement(iconOn, { size: iconSize })}
-        {!isToggled && iconOff && React.createElement(iconOff, { size: iconSize })}
+        {!isToggled &&
+          iconOff &&
+          React.createElement(iconOff, { size: iconSize })}
         {currentText && <span>{currentText}</span>}
       </Comp>
     );
-  },
+  }
 );
-ToggleButton.displayName = "ToggleButton";
+ToggleButton.displayName = 'ToggleButton';
 
 export { ToggleButton };

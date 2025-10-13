@@ -15,21 +15,18 @@ export function CheckboxWithLabel({
   checked,
   onCheckedChange,
   label,
-  className = "w-6 h-6",
-  labelClassName = "cursor-pointer select-none"
+  className = 'w-6 h-6',
+  labelClassName = 'cursor-pointer select-none',
 }: CheckboxWithLabelProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className='flex items-center gap-2'>
       <Checkbox
         className={className}
         id={id}
         checked={checked}
         onCheckedChange={onCheckedChange}
       />
-      <Label
-        className={labelClassName}
-        htmlFor={id}
-      >
+      <Label className={labelClassName} htmlFor={id}>
         {label}
       </Label>
     </div>

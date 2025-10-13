@@ -1,26 +1,19 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { getUser, isMod, isAdmin } from "@/lib/auth-server-utils";
+import { createServerClient } from '@supabase/ssr';
+import { NextResponse, type NextRequest } from 'next/server';
+import { getUser, isMod, isAdmin } from '@/lib/auth-server-utils';
 
-const GUEST_ROUTES = [
-  "/login",
-  "/auth",
-  "/about",
-  "/api/forgery",
-]
+const GUEST_ROUTES = ['/login', '/auth', '/about', '/api/forgery'];
 
-const USER_ROUTES = [
-  "/dashboard",
-]
+const USER_ROUTES = ['/dashboard'];
 
 const MOD_ROUTES = [
-  "/dashboard-mod",
-  "/controlled-signature-addition",
-  "/users",
-  "/signatures",
-  "/api/signatures",
-  "/api/pseudousers",
-]
+  '/dashboard-mod',
+  '/controlled-signature-addition',
+  '/users',
+  '/signatures',
+  '/api/signatures',
+  '/api/pseudousers',
+];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -39,17 +32,17 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
+            request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
             request,
           });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
-    },
+    }
   );
 
   // Do not run code between createServerClient and
@@ -71,14 +64,14 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (
-    request.nextUrl.pathname !== "/" &&
+    request.nextUrl.pathname !== '/' &&
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
+    !request.nextUrl.pathname.startsWith('/login') &&
+    !request.nextUrl.pathname.startsWith('/auth')
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
+    url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
 
@@ -91,7 +84,7 @@ export async function updateSession(request: NextRequest) {
   // console.log("MOD_ROUTES", request.nextUrl.pathname);
   // console.log("MOD_ROUTES", MOD_ROUTES.some(route => request.nextUrl.pathname.startsWith(route)));
   if (MOD_ROUTES.some(route => request.nextUrl.pathname.startsWith(route))) {
-    if (!await isMod(user)) {
+    if (!(await isMod(user))) {
       return new NextResponse(null, { status: 403 });
     }
   }

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
 import Canvas, { CanvasRef, DEFAULT_CANVAS_SIZE } from './canvas/canvas';
 import { Button } from './ui/button';
 import { CheckboxWithLabel } from './ui/checkbox-with-label';
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from 'react';
 import { BaseSaveOptions, saveOwnSignature } from '@/lib/signature-utils';
 import { toast } from './ui/toast';
 
@@ -12,7 +12,9 @@ interface CreateSignatureSectionProps {
   /**
    * Кастомная функция сохранения подписи. Если не указано – будет использован SignatureUtils.saveSignature
    */
-  saveSignature?: (options: Omit<BaseSaveOptions, "endpoint">) => Promise<string>;
+  saveSignature?: (
+    options: Omit<BaseSaveOptions, 'endpoint'>
+  ) => Promise<string>;
   canvasClassName?: string;
 }
 
@@ -27,7 +29,7 @@ export default function CreateSignatureSection({
 
   // Восстанавливаем сохранённый флаг из localStorage при монтировании
   useEffect(() => {
-    const savedState = localStorage.getItem("allowForForgery");
+    const savedState = localStorage.getItem('allowForForgery');
     if (savedState !== null) {
       setAllowForForgery(JSON.parse(savedState));
     }
@@ -36,7 +38,7 @@ export default function CreateSignatureSection({
   // Обработчик изменения чекбокса
   const handleCheckboxChange = (checked: boolean) => {
     setAllowForForgery(checked);
-    localStorage.setItem("allowForForgery", JSON.stringify(checked));
+    localStorage.setItem('allowForForgery', JSON.stringify(checked));
   };
 
   // Сохранение подписи
@@ -45,7 +47,7 @@ export default function CreateSignatureSection({
     setSaving(true);
 
     if (!canvasRef.current) {
-      console.error("Canvas не найден");
+      console.error('Canvas не найден');
       setSaving(false);
       return;
     }
@@ -54,19 +56,22 @@ export default function CreateSignatureSection({
     const inputType = canvasRef.current.getInputType();
 
     try {
-      const saveFn = saveSignatureProp ?? (async (opts: Omit<BaseSaveOptions, "endpoint">) => saveOwnSignature(opts));
+      const saveFn =
+        saveSignatureProp ??
+        (async (opts: Omit<BaseSaveOptions, 'endpoint'>) =>
+          saveOwnSignature(opts));
       await saveFn({
         points: signatureData,
-        inputType: inputType ?? "mouse",
+        inputType: inputType ?? 'mouse',
         userForForgery: allowForForgery,
       });
 
-      toast({ description: "Подпись сохранена" });
+      toast({ description: 'Подпись сохранена' });
       canvasRef.current.clear();
       onSignatureSaved?.();
     } catch (err) {
-      console.error("Network error", err);
-      toast({ description: "Ошибка сети", type: "background" });
+      console.error('Network error', err);
+      toast({ description: 'Ошибка сети', type: 'background' });
     } finally {
       setSaving(false);
     }
@@ -74,20 +79,20 @@ export default function CreateSignatureSection({
 
   return (
     <>
-      <div className="flex justify-center">
+      <div className='flex justify-center'>
         <Canvas
           ref={canvasRef}
           canvasClassName={canvasClassName || DEFAULT_CANVAS_SIZE}
         />
       </div>
       <CheckboxWithLabel
-        id="allowForForgery"
+        id='allowForForgery'
         checked={allowForForgery}
         onCheckedChange={handleCheckboxChange}
-        label="Разрешить использование как пример для подделки"
+        label='Разрешить использование как пример для подделки'
       />
       <Button onClick={handleSaveSignature} disabled={saving}>
-        {saving ? "Сохранение..." : "Сохранить"}
+        {saving ? 'Сохранение...' : 'Сохранить'}
       </Button>
     </>
   );
