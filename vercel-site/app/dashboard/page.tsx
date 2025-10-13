@@ -125,20 +125,20 @@ export default function UserDashboard() {
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">ID</label>
-                                <div className="text-sm font-mono text-muted-foreground">
+                                <div className="text-sm font-mono">
                                     {currentUser.id}
                                 </div>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Email</label>
-                                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                <div className="text-sm flex items-center gap-1">
                                     <Mail className="h-4 w-4" />
                                     {userEmail}
                                 </div>
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-muted-foreground">Дата регистрации</label>
-                                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                <div className="text-sm flex items-center gap-1">
                                     <Calendar className="h-4 w-4" />
                                     {currentUser.created_at ? new Date(currentUser.created_at).toLocaleDateString("ru-RU", {
                                         year: "numeric",

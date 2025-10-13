@@ -3,6 +3,7 @@
 import { createBrowserClient } from '@/lib/supabase/client';
 import { Button } from './ui/button';
 import { useRouter } from "next/navigation";
+import { invalidateProfileCache } from '@/lib/supabase/user-utils';
 
 export function LogoutButton() {
   const router = useRouter();
@@ -10,9 +11,8 @@ export function LogoutButton() {
   const logout = async () => {
     const supabase = createBrowserClient();
     await supabase.auth.signOut();
-    // Обновляем серверные компоненты после выхода
+    invalidateProfileCache();
     router.push("/auth/login");
-    router.refresh();
   };
 
   return <Button onClick={logout}>Logout</Button>;
