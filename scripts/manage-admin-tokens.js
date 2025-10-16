@@ -21,7 +21,7 @@ for (const env of ['.env', '.env.local']) {
                 if (key === 'NEXT_PUBLIC_SUPABASE_URL') {
                     supabaseUrl = value;
                 }
-                if (key === 'SERVICE_ROLE_KEY') {
+                if (key === 'SERVICE_ROLE_SECRET') {
                     supabaseServiceKey = value;
                 }
                 process.env[key] = value;
