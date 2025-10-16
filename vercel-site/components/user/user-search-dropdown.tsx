@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Input } from './ui/input';
+import { Input } from '@/components/ui/input';
 import {
   searchUsersAndPseudousers,
   formatModSearchLabel,
-} from '@/lib/supabase/mod-utils';
+} from '@/lib/utils/mod-utils';
 import { User } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import { isMod } from '@/lib/auth-client-utils';
+import { cn } from '@/lib/utils/utils';
+import { isMod } from '@/lib/utils/auth-client-utils';
 import { LoaderCircle } from 'lucide-react';
 
 type UserSearchDropdownProps = {

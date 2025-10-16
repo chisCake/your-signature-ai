@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser, isMod } from '@/lib/auth-server-utils';
+import { getUser, isMod } from '@/lib/utils/auth-server-utils';
 import { getProfile, getEmail } from '@/lib/supabase/queries';
 
 export async function GET(

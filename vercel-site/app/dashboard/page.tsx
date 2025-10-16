@@ -1,14 +1,14 @@
 'use client';
 
-import CreateSignatureSection from '@/components/create-signature-section';
+import CreateSignatureSection from '@/components/signature/signature-creation-section';
 import { Button } from '@/components/ui/button';
-import { DashboardSection } from '@/components/dashboard-section';
+import { DashboardSection } from '@/components/dashboard/dashboard-section';
 import { Profile, Signature } from '@/lib/types';
-import { SignatureList, PreviewField } from '@/components/signature-list';
+import { SignatureList, PreviewField } from '@/components/signature/signature-list';
 import {
   formatSignatureDate,
   getShortSignatureId,
-} from '@/lib/signature-utils';
+} from '@/lib/utils/signature-utils';
 import {
   User as UserIcon,
   Mail,
@@ -16,8 +16,8 @@ import {
   Shield,
   LoaderCircle,
 } from 'lucide-react';
-import { getSignatures } from '@/lib/supabase/user-utils';
-import { getProfile } from '@/lib/supabase/user-utils';
+import { getSignatures } from '@/lib/utils/user-utils';
+import { getProfile } from '@/lib/utils/user-utils';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/toast';
 

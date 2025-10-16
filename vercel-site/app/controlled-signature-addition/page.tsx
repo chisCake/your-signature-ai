@@ -1,14 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { UserSearchDropdown } from '@/components/user-search-dropdown';
+import { UserSearchDropdown } from '@/components/user/user-search-dropdown';
 import {
   ensurePseudouser,
   getUserGenuineSignatures,
-} from '@/lib/supabase/mod-utils';
+} from '@/lib/utils/mod-utils';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { SignatureList } from '@/components/signature-list';
+import { SignatureList } from '@/components/signature/signature-list';
 import {
   User,
   SignatureGenuine,
@@ -17,8 +17,8 @@ import {
   isProfile,
   isPseudouser,
 } from '@/lib/types';
-import CreateSignatureSection from '@/components/create-signature-section';
-import { saveForAnotherSignature } from '@/lib/signature-utils';
+import CreateSignatureSection from '@/components/signature/signature-creation-section';
+import { saveForAnotherSignature } from '@/lib/utils/signature-utils';
 import { Badge } from '@/components/ui/badge';
 
 const CANVAS_SIZE = `w-[560px] h-[420px]

@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Button } from './ui/button';
-import { LogoutButton } from './logout-button';
-import { getProfile } from '@/lib/supabase/user-utils';
+import { Button } from '@/components/ui/button';
+import { LogoutButton } from '@/components/auth/logout-button';
+import { getProfile } from '@/lib/utils/user-utils';
 import { useState, useEffect } from 'react';
 import { Profile } from '@/lib/types';
 import { createBrowserClient } from '@/lib/supabase/client';

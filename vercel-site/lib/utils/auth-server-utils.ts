@@ -1,5 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server';
-import { hasRole } from '@/lib/auth-utils';
+import { hasRole } from '@/lib/utils/auth-utils';
 import { getProfile, getGenuineSignature } from '@/lib/supabase/queries';
 import { SignatureGenuine } from '@/lib/types';
 

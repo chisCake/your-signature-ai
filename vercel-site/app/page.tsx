@@ -1,12 +1,12 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import SignatureDisplay from '@/components/canvas/signature-display';
+import SignatureDisplay from '@/components/signature/signature-display';
 import { useState, useEffect, useRef } from 'react';
 import { SignaturePoint } from '@/lib/types';
-import Canvas, { CanvasRef } from '@/components/canvas/canvas';
+import Canvas, { CanvasRef } from '@/components/signature/canvas';
 import { LoaderCircle, PenLine, RotateCcw } from 'lucide-react';
-import { csvStringToPoints } from '@/lib/signature-utils';
+import { csvStringToPoints } from '@/lib/utils/signature-utils';
 import { toast } from '@/components/ui/toast';
 
 // Адаптивные размеры холста для мобильных устройств

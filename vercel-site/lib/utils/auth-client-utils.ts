@@ -1,5 +1,5 @@
 import { createBrowserClient } from '@/lib/supabase/client';
-import { hasRole } from '@/lib/auth-utils';
+import { hasRole } from '@/lib/utils/auth-utils';
 import { getProfile, getGenuineSignature } from '@/lib/supabase/queries';
 import { SignatureGenuine } from '@/lib/types';
 import { User } from '@supabase/supabase-js';

@@ -2,8 +2,8 @@ import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { LucideIcon } from 'lucide-react';
 
-import { cn } from '@/lib/utils';
-import { buttonVariants } from './button';
+import { cn } from '@/lib/utils/utils';
+import { buttonVariants } from '@/components/ui/button';
 
 export interface ToggleButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {

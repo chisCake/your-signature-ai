@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { SignatureList } from '@/components/signature-list';
+import { SignatureList } from '@/components/signature/signature-list';
 import { SignatureGenuine, SignatureForged } from '@/lib/types';
 import {
   getGenuineSignatures,

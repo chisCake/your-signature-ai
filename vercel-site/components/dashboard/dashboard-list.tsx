@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { getUser, isMod, isAdmin } from '@/lib/auth-client-utils';
-import { Button } from './ui/button';
+import { getUser, isMod, isAdmin } from '@/lib/utils/auth-client-utils';
+import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 

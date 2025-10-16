@@ -1,6 +1,6 @@
 'use client';
 
-import { isMod, isAdmin, getUser } from '@/lib/auth-client-utils';
+import { isMod, isAdmin, getUser } from '@/lib/utils/auth-client-utils';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
