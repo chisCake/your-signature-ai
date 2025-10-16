@@ -20,7 +20,7 @@ for (const env of ['.env', '.env.local']) {
                 if (key === 'NEXT_PUBLIC_SUPABASE_URL') {
                     supabaseUrl = value;
                 }
-                if (key === 'SERVICE_ROLE_KEY') {
+                if (key === 'SERVICE_ROLE_SECRET') {
                     supabaseServiceKey = value;
                 }
                 process.env[key] = value;
@@ -146,7 +146,7 @@ if (args.length !== 1) {
   console.log('');
   console.log('Переменные окружения:');
   console.log('  NEXT_PUBLIC_SUPABASE_URL - URL Supabase (по умолчанию: http://127.0.0.1:54321)');
-  console.log('  SUPABASE_SERVICE_ROLE_KEY - Service Role Key Supabase');
+  console.log('  SUPABASE_SERVICE_ROLE_SECRET - Service Role Secret Supabase');
   console.log('');
   console.log('Текущая конфигурация:');
   console.log(`  Supabase URL: ${supabaseUrl}`);
