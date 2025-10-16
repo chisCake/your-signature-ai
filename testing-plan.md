@@ -441,12 +441,54 @@ test.describe('Signature Management', () => {
     "test:vercel-site": "turbo run test --filter=vercel-site",
     "test:colab-training": "turbo run test --filter=colab-training", 
     "test:render-site": "turbo run test --filter=render-site",
-    "test:all": "turbo run test --parallel",
-    "test:unit": "turbo run test:unit --parallel",
-    "test:e2e": "turbo run test:e2e --parallel",
-    "test:integration": "turbo run test:integration --parallel"
+    "test:vercel-site:e2e": "cd vercel-site && playwright test",
+    "test:vercel-site:unit": "cd vercel-site && npm run test:unit",
+    "test:colab-training:unit": "cd colab-training && pytest tests/colab-training/unit",
+    "test:colab-training:integration": "cd colab-training && pytest tests/colab-training/integration",
+    "test:colab-training:e2e": "cd colab-training && pytest tests/colab-training/e2e",
+    "test:render-site:unit": "cd render-site && pytest tests/render-site/unit",
+    "test:render-site:integration": "cd render-site && pytest tests/render-site/integration",
+    "test:render-site:e2e": "cd render-site && playwright test",
+    "test:ui": "turbo run test:ui --parallel",
+    "test:debug": "turbo run test:debug --parallel"
   }
 }
+```
+
+### 6.2 vercel-site/package.json
+```json
+{
+  "scripts": {
+    "test": "playwright test",
+    "test:unit": "jest",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:guest": "playwright test --project=guest",
+    "test:user": "playwright test --project=user",
+    "test:mod": "playwright test --project=mod",
+    "test:admin": "playwright test --project=admin",
+    "test:api": "playwright test --project=api"
+  }
+}
+```
+
+### 6.3 colab-training/requirements-test.txt
+```txt
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.21.0
+pytest-xdist>=3.0.0
+```
+
+### 6.4 render-site/requirements-test.txt
+```txt
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.21.0
+pytest-xdist>=3.0.0
+playwright>=1.40.0
 ```
 
 ### 6.2 vercel-site/package.json
@@ -556,9 +598,24 @@ jobs:
 - Процент успешности
 - Покрытие функциональности
 
-## 9. Общие утилиты и шаблоны
+## 9. Управление тестами по проектам
 
-### 9.1 Общие тестовые утилиты
+### 9.1 vercel-site (Next.js + Supabase)
+- **Технологии**: Playwright, Jest, Supabase SDK
+- **Особенности**: E2E тесты с авторизацией, API тесты, тесты компонентов
+- **Запуск**: `npm run test:vercel-site`
+
+### 9.2 colab-training (Python скрипты)
+- **Технологии**: pytest, pytest-cov, pytest-mock
+- **Особенности**: Unit тесты Python скриптов, интеграционные тесты пайплайнов
+- **Запуск**: `npm run test:colab-training`
+
+### 9.3 render-site (Python веб-приложение)
+- **Технологии**: pytest, Playwright, FastAPI/Flask тестирование
+- **Особенности**: API тесты, E2E тесты веб-интерфейса
+- **Запуск**: `npm run test:render-site`
+
+### 9.4 Общие тестовые утилиты
 ```
 /tests/
 ├── shared/
@@ -576,12 +633,7 @@ jobs:
 │       └── test-env.ts
 ```
 
-### 9.2 Шаблоны для новых проектов
-- **Веб-приложения (Next.js/React)**: Использование vercel-site как шаблона
-- **Python скрипты**: Использование colab-training как шаблона  
-- **Python веб-приложения**: Использование render-site как шаблона
-
-### 9.3 Стандартные паттерны тестирования
+### 9.5 Стандартные паттерны тестирования
 - Единообразная структура тестовых файлов
 - Стандартизированные data-testid атрибуты
 - Общие паттерны для setup/teardown
@@ -602,9 +654,22 @@ jobs:
 4. CI/CD настройка
 
 ### 10.3 Фаза 3: colab-training
-1. Настройка pytest
-2. Unit тесты для Python скриптов
-3. Integration тесты
+1. Настройка pytest для Python скриптов
+2. Unit тесты для compile_md.py, copy_test_users.py, fullname_generator.py
+3. Integration тесты для пайплайна обучения
+4. E2E тесты для полного цикла обучения
+
+### 10.4 Фаза 4: render-site
+1. Настройка pytest для Python веб-приложения
+2. Unit тесты для API эндпоинтов и моделей
+3. Integration тесты для работы с БД
+4. E2E тесты с Playwright для веб-интерфейса
+
+### 10.5 Фаза 5: Интеграция и мониторинг
+1. Настройка CI/CD для всех проектов
+2. Общие утилиты и шаблоны
+3. Мониторинг и отчетность
+4. Документация и обучение
 4. E2E тесты обучения
 
 ### 10.4 Фаза 4: render-site
