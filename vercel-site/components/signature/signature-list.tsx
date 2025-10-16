@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { SignatureGenuine, SignatureForged } from '@/lib/types';
-import { SignaturePreview } from './signature-preview';
-import { SignatureModal } from './signature-modal';
+import { SignaturePreview } from '@/components/signature/signature-preview';
+import { SignatureModal } from '@/components/signature/signature-modal';
 import { LoaderCircle } from 'lucide-react';
 
 export interface PreviewField {
