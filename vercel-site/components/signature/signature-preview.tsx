@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ToggleButton } from '@/components/ui/toggle-button';
 import { Badge } from '@/components/ui/badge';
-import { PreviewField } from './signature-list';
+import { PreviewField } from '@/components/signature/signature-list';
 import {
   deleteSignature,
   downloadSignatureAsPNG,

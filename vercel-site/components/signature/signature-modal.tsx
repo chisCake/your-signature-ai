@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { SignatureGenuine, SignatureForged } from '@/lib/types';
-import SignatureDisplay from './signature-display';
+import SignatureDisplay from '@/components/signature/signature-display';
 import { Button } from '@/components/ui/button';
 import {
   csvToPoints,
