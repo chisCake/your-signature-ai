@@ -4,7 +4,7 @@ import {
   getUsers,
   getPseudousers,
   getUserGenuineSignatures,
-} from '@/lib/supabase/mod-utils';
+} from '@/lib/utils/mod-utils';
 import {
   Profile,
   Pseudouser,
@@ -28,8 +28,8 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { SignatureList, PreviewField } from '@/components/signature-list';
-import { UserList } from '@/components/user-list';
+import { SignatureList, PreviewField } from '@/components/signature/signature-list';
+import { UserList } from '@/components/user/user-list';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LoaderCircle,
@@ -48,7 +48,7 @@ import {
   PlusCircle,
   Ban,
 } from 'lucide-react';
-import { getProfile } from '@/lib/supabase/user-utils';
+import { getProfile } from '@/lib/utils/user-utils';
 
 
 export default function UsersPage() {

@@ -1,11 +1,11 @@
 'use client';
 
-import Canvas, { CanvasRef, DEFAULT_CANVAS_SIZE } from './canvas/canvas';
-import { Button } from './ui/button';
-import { CheckboxWithLabel } from './ui/checkbox-with-label';
+import Canvas, { CanvasRef, DEFAULT_CANVAS_SIZE } from '@/components/signature/canvas';
+import { Button } from '@/components/ui/button';
+import { CheckboxWithLabel } from '@/components/ui/checkbox-with-label';
 import { useState, useEffect, useRef } from 'react';
-import { BaseSaveOptions, saveOwnSignature } from '@/lib/signature-utils';
-import { toast } from './ui/toast';
+import { BaseSaveOptions, saveOwnSignature } from '@/lib/utils/signature-utils';
+import { toast } from '@/components/ui/toast';
 
 interface CreateSignatureSectionProps {
   onSignatureSaved?: () => void;

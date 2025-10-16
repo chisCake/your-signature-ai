@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { getUser } from '@/lib/auth-server-utils';
+import { getUser } from '@/lib/utils/auth-server-utils';
 import { z } from 'zod';
 
 // GET - возврат случайной подписи для подделки (id, features_table)

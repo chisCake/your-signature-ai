@@ -2,15 +2,15 @@
 
 import React, { useEffect } from 'react';
 import { SignatureGenuine, SignatureForged } from '@/lib/types';
-import SignatureDisplay from './canvas/signature-display';
-import { Button } from './ui/button';
+import SignatureDisplay from './signature-display';
+import { Button } from '@/components/ui/button';
 import {
   csvToPoints,
   formatSignatureDateTime,
   getSignatureStats,
   downloadSignatureAsPNG,
   deleteSignature,
-} from '@/lib/signature-utils';
+} from '@/lib/utils/signature-utils';
 import { X } from 'lucide-react';
 
 interface SignatureModalProps {

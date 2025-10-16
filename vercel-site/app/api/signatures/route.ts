@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getUser, isMod } from '@/lib/auth-server-utils';
+import { getUser, isMod } from '@/lib/utils/auth-server-utils';
 import { createServiceClient } from '@/lib/supabase/service';
 import { getProfile } from '@/lib/supabase/queries';
 

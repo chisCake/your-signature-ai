@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUser, isMod, canEditSignature } from '@/lib/auth-server-utils';
+import { getUser, isMod, canEditSignature } from '@/lib/utils/auth-server-utils';
 import {
   deleteSignature,
   getGenuineSignature,

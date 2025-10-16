@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ThemeSwitcher } from '@/components/theme-switcher';
-import { AuthButton } from '@/components/auth-button';
-import { DashboardList } from '@/components/dashboard-list';
-import { ActionPageList } from '@/components/action-page-list';
+import { ThemeSwitcher } from '@/components/layout/theme-switcher';
+import { AuthButton } from '@/components/auth/auth-button';
+import { DashboardList } from '@/components/dashboard/dashboard-list';
+import { ActionPageList } from '@/components/dashboard/dashboard-action-list';
 import { Menu, X } from 'lucide-react';
-import { getUser } from '@/lib/auth-client-utils';
+import { getUser } from '@/lib/utils/auth-client-utils';
 
 export function MobileNavigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

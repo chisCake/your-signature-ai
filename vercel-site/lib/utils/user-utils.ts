@@ -69,39 +69,52 @@ function clearProfileCache(): void {
 }
 
 export async function getSignatures(): Promise<Signature[]> {
-  const client = createBrowserClient();
-  const { data } = await client.auth.getClaims();
-  const userId = data?.claims?.sub;
+  try {
+    const client = createBrowserClient();
+    const { data } = await client.auth.getClaims();
+    const userId = data?.claims?.sub;
+    if (!userId) {
+      throw new Error('User ID not found');
+    }
 
-  const signatures = await getUserGenuineSignatures(userId!, client, 'user');
-  return signatures;
+    const signatures = await getUserGenuineSignatures(userId, client, 'user');
+    return signatures;
+  } catch (error) {
+    console.error('Error getting signatures:', error);
+    throw error;
+  }
 }
 
 export async function getProfile(): Promise<Profile | null> {
-  const client = createBrowserClient();
-  const { data } = await client.auth.getClaims();
-  const userId = data?.claims?.sub;
+  try {
+    const client = createBrowserClient();
+    const { data } = await client.auth.getClaims();
+    const userId = data?.claims?.sub;
+    if (!userId) {
+      console.trace();
+      throw new Error('User ID not found');
+    }
 
-  if (!userId) {
-    return null;
+      const cachedProfile = getCachedProfile(userId);
+    if (cachedProfile) {
+      return cachedProfile;
+    }
+
+    const profile = await getProfileQuery(userId, client);
+    if (!profile) {
+      throw new Error('Profile not found');
+    }
+
+    profile.email = data?.claims?.email || null;
+    if (profile) {
+      setCachedProfile(profile, userId);
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('Error getting profile:', error);
+    throw error;
   }
-
-  // Пытаемся получить профиль из кэша
-  const cachedProfile = getCachedProfile(userId);
-  if (cachedProfile) {
-    return cachedProfile;
-  }
-
-  // Если кэш пуст или истек, загружаем из БД
-  const profile = await getProfileQuery(userId, client);
-  profile!.email = data.claims.email;
-
-  // Сохраняем в кэш, если профиль найден
-  if (profile) {
-    setCachedProfile(profile, userId);
-  }
-
-  return profile;
 }
 
 // Экспортируемая функция для очистки кэша профиля

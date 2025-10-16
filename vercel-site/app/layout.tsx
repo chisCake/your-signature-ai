@@ -2,15 +2,15 @@ import type { Metadata, Viewport } from 'next';
 import React from 'react';
 import { Geist } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
-import { ThemeSwitcher } from '@/components/theme-switcher';
-import { AuthButton } from '@/components/auth-button';
+import { ThemeSwitcher } from '@/components/layout/theme-switcher';
+import { AuthButton } from '@/components/auth/auth-button';
 import Link from 'next/link';
-import { DashboardList } from '@/components/dashboard-list';
-import './globals.css';
-import { ActionPageList } from '@/components/action-page-list';
+import { DashboardList } from '@/components/dashboard/dashboard-list';
+import '@/app/globals.css';
+import { ActionPageList } from '@/components/dashboard/dashboard-action-list';
 import { ToastProvider } from '@/components/ui/toast';
 import { ConfirmDialogProvider } from '@/components/ui/alert-dialog';
-import { MobileNavigation } from '@/components/mobile-navigation';
+import { MobileNavigation } from '@/components/layout/mobile-navigation';
 import { Github } from 'lucide-react';
 
 const defaultUrl = process.env.VERCEL_URL
@@ -42,7 +42,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning>
+    <html lang='en' suppressHydrationWarning data-scroll-behavior="smooth">
       <body className={`${geistSans.className} antialiased`}>
         <ToastProvider>
           <ConfirmDialogProvider>

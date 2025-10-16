@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { SignaturePoint } from '@/lib/types';
 import { RotateCcw, LoaderCircle } from 'lucide-react';
-import { DEFAULT_CANVAS_SIZE } from './canvas';
+import { DEFAULT_CANVAS_SIZE } from '@/components/signature/canvas';
 
 // Палитра цветов для множественных подписей (до 8 цветов)
 const SIGNATURE_COLORS = [

@@ -6,9 +6,9 @@ import {
   SignatureForged,
   isSignatureGenuine,
 } from '@/lib/types';
-import { Button } from './ui/button';
-import { ToggleButton } from './ui/toggle-button';
-import { Badge } from './ui/badge';
+import { Button } from '@/components/ui/button';
+import { ToggleButton } from '@/components/ui/toggle-button';
+import { Badge } from '@/components/ui/badge';
 import { PreviewField } from './signature-list';
 import {
   deleteSignature,
@@ -17,9 +17,9 @@ import {
   toggleModForDataset,
   toggleModForForgery,
   toggleUserForForgery,
-} from '@/lib/signature-utils';
+} from '@/lib/utils/signature-utils';
 import Image from 'next/image';
-import { getUser, isMod } from '@/lib/auth-client-utils';
+import { getUser, isMod } from '@/lib/utils/auth-client-utils';
 import {
   Download,
   Eye,
