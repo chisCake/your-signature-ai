@@ -1,6 +1,12 @@
 # Global .gitignore for Signature AI Project
 
 # ===========================================
+# Secrets
+# ===========================================
+
+secrets.json
+
+# ===========================================
 # Environment Variables
 # ===========================================
 
@@ -51,6 +57,9 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+vercel-site/playwright-report/
+vercel-site/test-results/
+vercel-site/tests/e2e/storage/
 
 # ===========================================
 # Dependencies
@@ -302,6 +311,8 @@ auto-save-list
 tramp
 .\#*
 
+# Cursor AI
+.cursor/
 *.mdc
 AGENTS_NOTES*.md
 
