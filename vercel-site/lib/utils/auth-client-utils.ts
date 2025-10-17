@@ -1,8 +1,69 @@
 import { createBrowserClient } from '@/lib/supabase/client';
 import { hasRole } from '@/lib/utils/auth-utils';
 import { getProfile, getGenuineSignature } from '@/lib/supabase/queries';
-import { SignatureGenuine } from '@/lib/types';
+import { SignatureGenuine, Profile } from '@/lib/types';
 import { User } from '@supabase/supabase-js';
+
+// Константы для кэширования
+const PROFILE_CACHE_KEY = 'user_profile_cache';
+const CACHE_EXPIRY_TIME = 5 * 60 * 1000; // 5 минут в миллисекундах
+
+// Интерфейс для кэшированных данных
+interface CachedProfile {
+  profile: Profile;
+  timestamp: number;
+  userId: string;
+}
+
+// Функции для работы с кэшем
+function getCachedProfile(userId: string): Profile | null {
+  try {
+    const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+    if (!cached) return null;
+
+    const cachedData: CachedProfile = JSON.parse(cached);
+
+    // Проверяем, что кэш принадлежит текущему пользователю
+    if (cachedData.userId !== userId) {
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+      return null;
+    }
+
+    // Проверяем, не истек ли кэш
+    const now = Date.now();
+    if (now - cachedData.timestamp > CACHE_EXPIRY_TIME) {
+      localStorage.removeItem(PROFILE_CACHE_KEY);
+      return null;
+    }
+
+    return cachedData.profile;
+  } catch (error) {
+    console.error('Ошибка при чтении кэша профиля:', error);
+    localStorage.removeItem(PROFILE_CACHE_KEY);
+    return null;
+  }
+}
+
+function setCachedProfile(profile: Profile, userId: string): void {
+  try {
+    const cachedData: CachedProfile = {
+      profile,
+      timestamp: Date.now(),
+      userId,
+    };
+    localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(cachedData));
+  } catch (error) {
+    console.error('Ошибка при сохранении кэша профиля:', error);
+  }
+}
+
+function clearProfileCache(): void {
+  try {
+    localStorage.removeItem(PROFILE_CACHE_KEY);
+  } catch (error) {
+    console.error('Ошибка при очистке кэша профиля:', error);
+  }
+}
 
 export async function getUser(): Promise<User | null> {
   const supabase = createBrowserClient();
@@ -11,6 +72,43 @@ export async function getUser(): Promise<User | null> {
   if (!sessionUser) return null;
   // console.log("getUser (client):", sessionUser);
   return sessionUser;
+}
+
+export async function getUserProfile(): Promise<Profile | null> {
+  try {
+    const client = createBrowserClient();
+    const { data } = await client.auth.getClaims();
+    const userId = data?.claims?.sub;
+    if (!userId) {
+      return null;
+    }
+
+    const cachedProfile = getCachedProfile(userId);
+    if (cachedProfile) {
+      return cachedProfile;
+    }
+
+    const profile = await getProfile(userId, client);
+    if (!profile) {
+      throw new Error('Profile not found');
+    }
+
+    profile.email = data?.claims?.email || null;
+    if (profile) {
+      setCachedProfile(profile, userId);
+    }
+
+    return profile;
+  } catch (error) {
+    console.error('Error getting profile:', error);
+    throw error;
+  }
+}
+
+// Экспортируемая функция для очистки кэша профиля
+// Используйте эту функцию при обновлении профиля пользователя
+export function invalidateProfileCache(): void {
+  clearProfileCache();
 }
 
 export async function isMod(user: User | null = null): Promise<boolean> {

@@ -17,7 +17,7 @@ import {
   LoaderCircle,
 } from 'lucide-react';
 import { getSignatures } from '@/lib/utils/user-utils';
-import { getProfile } from '@/lib/utils/user-utils';
+import { getUserProfile } from '@/lib/utils/auth-client-utils';
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from '@/components/ui/toast';
 
@@ -47,7 +47,7 @@ export default function UserDashboard() {
   // Загрузка данных пользователя
   const fetchUserData = useCallback(async () => {
     try {
-      const userData = await getProfile();
+      const userData = await getUserProfile();
       setCurrentUser(userData ?? null);
       setUserEmail(userData?.email ?? '');
     } catch (error) {
