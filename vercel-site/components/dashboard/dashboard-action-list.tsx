@@ -1,21 +1,10 @@
-'use client';
-
-import { isMod, isAdmin, getUser } from '@/lib/utils/auth-client-utils';
+import { isMod, isAdmin, getUser } from '@/lib/utils/auth-server-utils';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
 
-export function ActionPageList() {
-  const [modFlag, setModFlag] = useState<boolean>(false);
-  const [adminFlag, setAdminFlag] = useState<boolean>(false);
-
-  useEffect(() => {
-    (async () => {
-      getUser().then(user => {
-        isMod(user).then(setModFlag);
-        isAdmin(user).then(setAdminFlag);
-      });
-    })();
-  }, []);
+export async function ActionPageList() {
+  const user = await getUser();
+  const modFlag = await isMod(user);
+  const adminFlag = await isAdmin(user);
 
   if (!modFlag) {
     return null;

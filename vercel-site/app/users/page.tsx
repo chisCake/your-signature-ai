@@ -48,7 +48,7 @@ import {
   PlusCircle,
   Ban,
 } from 'lucide-react';
-import { getProfile } from '@/lib/utils/user-utils';
+import { getUserProfile } from '@/lib/utils/auth-client-utils';
 
 
 export default function UsersPage() {
@@ -77,7 +77,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([getUsers(), getPseudousers(), getProfile()])
+    Promise.all([getUsers(), getPseudousers(), getUserProfile()])
       .then(([usersData, pseudousersData, currentUserData]) => {
         setUsers(usersData);
         setPseudousers(pseudousersData);

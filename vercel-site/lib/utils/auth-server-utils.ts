@@ -1,13 +1,37 @@
 import { createServerClient } from '@/lib/supabase/server';
 import { hasRole } from '@/lib/utils/auth-utils';
 import { getProfile, getGenuineSignature } from '@/lib/supabase/queries';
-import { SignatureGenuine } from '@/lib/types';
+import { SignatureGenuine, Profile } from '@/lib/types';
 
 export async function getUser() {
   const supabase = await createServerClient();
   const { data } = await supabase.auth.getClaims();
   // console.log("getUser (server):", data?.claims);
   return data?.claims;
+}
+
+export async function getUserProfile(): Promise<Profile | null> {
+  try {
+    const user = await getUser();
+    if (!user?.sub) {
+      return null;
+    }
+
+    const supabase = await createServerClient();
+    const profile = await getProfile(user.sub, supabase);
+    
+    if (!profile) {
+      return null;
+    }
+
+    // Добавляем email из claims
+    profile.email = user.email || null;
+    
+    return profile;
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    return null;
+  }
 }
 
 export async function isMod(user: unknown = null) {

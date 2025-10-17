@@ -1,25 +1,11 @@
-'use client';
-
 import Link from 'next/link';
-import { getUser, isMod, isAdmin } from '@/lib/utils/auth-client-utils';
+import { getUser, isMod, isAdmin } from '@/lib/utils/auth-server-utils';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
 
-export function DashboardList() {
-  const [user, setUser] = useState<User | null>(null);
-  const [modFlag, setModFlag] = useState<boolean>(false);
-  const [adminFlag, setAdminFlag] = useState<boolean>(false);
-
-  useEffect(() => {
-    (async () => {
-      getUser().then(user => {
-        setUser(user);
-        isMod(user).then(setModFlag);
-        isAdmin(user).then(setAdminFlag);
-      });
-    })();
-  }, []);
+export async function DashboardList() {
+  const user = await getUser();
+  const modFlag = await isMod(user);
+  const adminFlag = await isAdmin(user);
 
   return (
     user && (
