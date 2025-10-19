@@ -12,46 +12,6 @@ const bodySchema = z.object({
   targetId: z.string().uuid().optional(),
 });
 
-// Получение всех подписей пользователя
-// export async function GET(req: NextRequest) {
-//     const user = await getUser();
-
-//     if (!user) {
-//         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-//     }
-
-//     const supabaseSR = createServiceClient();
-//     const { data, error } = await supabaseSR
-//         .from("genuine_signatures")
-//         .select("id, user_id, features_table, input_type, user_for_forgery, created_at, updated_at")
-//         .eq("user_id", user.sub)
-//         .order("created_at", { ascending: false });
-
-//     if (error) {
-//         console.error("Select error", error);
-//         return NextResponse.json({ error: "Database select failed" }, { status: 500 });
-//     }
-
-//     // Преобразуем данные в CSV-представление Signature
-//     const signatures = data.map(row => {
-//         const csv = String(row.features_table || "");
-//         const newlineIndex = csv.indexOf("\n");
-//         const header = newlineIndex >= 0 ? csv.slice(0, newlineIndex) : (csv || "t,x,y,p");
-//         const rows = newlineIndex >= 0 ? csv.slice(newlineIndex + 1) : "";
-//         return {
-//             id: row.id,
-//             user_id: row.user_id,
-//             csv_header: header || "t,x,y,p",
-//             csv_rows: rows,
-//             status: "accepted" as const,
-//             created_at: row.created_at,
-//             updated_at: row.updated_at,
-//         };
-//     });
-
-//     return NextResponse.json({ signatures });
-// }
-
 export async function POST(req: NextRequest) {
   const user = await getUser();
 

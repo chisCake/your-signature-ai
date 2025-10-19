@@ -1,6 +1,7 @@
 import {
   Profile,
   Pseudouser,
+  Signature,
   SignatureForged,
   SignatureGenuine,
   mapToProfile,
@@ -128,6 +129,33 @@ export async function getForgedSignature(
     return null;
   }
   return mapToSignatureForged(data);
+}
+
+export async function searchSignature(
+  id: string,
+  supabase?: SupabaseClient
+): Promise<Signature | null> {
+  const client = getClient(supabase);
+  const { data: genuine } = await client
+    .from('genuine_signatures')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  const { data: forged } = await client
+    .from('forged_signatures')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (genuine) {
+    return mapToSignatureGenuine(genuine);
+  }
+  if (forged) {
+    return mapToSignatureForged(forged);
+  }
+
+  return null;
 }
 
 export async function getUserGenuineSignatures(
