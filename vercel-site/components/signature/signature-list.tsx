@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { SignatureGenuine, SignatureForged } from '@/lib/types';
 import { SignaturePreview } from '@/components/signature/signature-preview';
 import { SignatureModal } from '@/components/signature/signature-modal';
@@ -21,7 +21,7 @@ interface SignatureListProps {
   showHeader?: boolean;
 }
 
-export function SignatureList({
+export const SignatureList = memo(function SignatureList({
   signatures,
   loading = false,
   previewFields,
@@ -94,4 +94,4 @@ export function SignatureList({
       />
     </div>
   );
-}
+});
