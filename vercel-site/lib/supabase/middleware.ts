@@ -6,7 +6,7 @@ import { getUser, isMod, isAdmin } from '@/lib/utils/auth-server-utils';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
-const GUEST_ROUTES = ['/login', '/auth', '/about', '/api/forgery'];
+const GUEST_ROUTES = ['/login', '/auth', '/about', '/api/forgery', '/api/health'];
 
 const USER_ROUTES = ['/dashboard'];
 
