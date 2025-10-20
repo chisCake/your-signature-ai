@@ -225,14 +225,10 @@ dmypy.json
 *.npy
 
 # Large data directories
-data/
+/data/
 datasets/
 embeddings/
-models/
 checkpoints/
-
-# Jupyter notebook outputs
-*.ipynb
 
 # MLflow
 mlruns/
@@ -270,6 +266,7 @@ docker-compose.override.yml
 # ===========================================
 
 tmp/
+.tmp*/
 temp/
 uploads/
 .local/
@@ -349,6 +346,8 @@ next-env.d.ts
 colab-training/data/
 colab-training/datasets/DeepSignDB/
 colab-training/datasets/SigComp/
+runs/
+copy_runs.ps1
 
 # Model artifacts
 colab-training/nn/*
