@@ -26,13 +26,14 @@ class PKSampler(Sampler[int]):
         # only identities with enough samples (or repeat if fewer)
         self.identities: List[str] = list(self.label_to_indices.keys())
 
-    def __iter__(self) -> Iterable[int]:
+    def __iter__(self) -> Iterable[List[int]]:
         ids = self.identities[:]
         if self.shuffle_identities:
             random.shuffle(ids)
-        batch: List[int] = []
+        
         for i in range(0, len(ids), self.P):
             group = ids[i:i + self.P]
+            batch: List[int] = []
             for g in group:
                 pool = self.label_to_indices[g]
                 if len(pool) >= self.K:
@@ -44,13 +45,11 @@ class PKSampler(Sampler[int]):
                     random.shuffle(expanded)
                     picks = expanded
                 batch.extend(picks)
-            for idx in batch:
-                yield idx
-            batch = []
+            yield batch
 
     def __len__(self) -> int:
-        # approximate: number of full PK groups times K per identity
+        # number of PK groups (i.e. number of batches)
         groups = (len(self.identities) + self.P - 1) // self.P
-        return groups * self.P * self.K
+        return groups
 
 

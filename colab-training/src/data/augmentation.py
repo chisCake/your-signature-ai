@@ -14,18 +14,20 @@ class SignatureAugmentation:
     
     def __init__(
         self,
-        time_warp_prob: float = 0.3,
-        time_warp_sigma: float = 0.2,
-        noise_prob: float = 0.3,
-        noise_sigma: float = 0.01,
-        rotation_prob: float = 0.2,
-        rotation_range: float = 5.0,  # degrees
-        scale_prob: float = 0.2,
-        scale_range: tuple = (0.9, 1.1),
-        dropout_prob: float = 0.1,
-        dropout_rate: float = 0.05,
-        time_resample_prob: float = 0.3,  # NEW: prevent length-based discrimination
-        resample_range: tuple = (300, 800),  # NEW: target length range
+        time_warp_prob: float = 0.5,  # Увеличено с 0.3
+        time_warp_sigma: float = 0.3,  # Увеличено с 0.2
+        noise_prob: float = 0.5,  # Увеличено с 0.3
+        noise_sigma: float = 0.02,  # Увеличено с 0.01
+        rotation_prob: float = 0.3,  # Увеличено с 0.2
+        rotation_range: float = 8.0,  # Увеличено с 5.0
+        scale_prob: float = 0.3,  # Увеличено с 0.2
+        scale_range: tuple = (0.85, 1.15),  # Расширено с (0.9, 1.1)
+        dropout_prob: float = 0.2,  # Увеличено с 0.1
+        dropout_rate: float = 0.1,  # Увеличено с 0.05
+        time_resample_prob: float = 0.5,  # Увеличено с 0.3
+        resample_range: tuple = (200, 1000),  # Расширено с (300, 800)
+        pressure_prob: float = 0.4,  # NEW: изменение давления
+        pressure_range: tuple = (0.8, 1.2),  # NEW: диапазон изменения давления
     ):
         """
         Args:
@@ -52,6 +54,8 @@ class SignatureAugmentation:
         self.dropout_rate = dropout_rate
         self.time_resample_prob = time_resample_prob
         self.resample_range = resample_range
+        self.pressure_prob = pressure_prob
+        self.pressure_range = pressure_range
     
     def __call__(self, tensor: torch.Tensor) -> torch.Tensor:
         """
@@ -98,6 +102,10 @@ class SignatureAugmentation:
         # 6. Time resampling (prevent length-based discrimination)
         if random.random() < self.time_resample_prob:
             aug = self._time_resample(aug, seq_len)
+        
+        # 7. Pressure variation (simulate different pen pressure)
+        if random.random() < self.pressure_prob:
+            aug = self._pressure_variation(aug, seq_len)
         
         return aug
     
@@ -198,6 +206,17 @@ class SignatureAugmentation:
         resampled[target_len:] = 0
         
         return resampled
+    
+    def _pressure_variation(self, tensor: torch.Tensor, seq_len: int) -> torch.Tensor:
+        """
+        Vary pressure values to simulate different pen pressure.
+        Assumes pressure is at index 2 (after x, y coordinates).
+        """
+        if tensor.size(1) >= 3:
+            pressure_scale = random.uniform(*self.pressure_range)
+            # Apply to pressure feature (assuming it's at index 2)
+            tensor[:seq_len, 2] *= pressure_scale
+        return tensor
 
 
 class NoAugmentation:

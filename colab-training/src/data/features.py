@@ -31,8 +31,21 @@ def register_feature(name: str):
     return _decorator
 
 
-def _safe_div(a: np.ndarray, b: np.ndarray, eps: float = 1e-8) -> np.ndarray:
-    return a / (b + eps)
+def _safe_div(a: np.ndarray, b: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+    """Safe division with better epsilon handling."""
+    # Use larger epsilon to prevent extreme values
+    # Clip denominator to prevent division by very small numbers
+    b_clipped = np.maximum(b, eps)
+    result = a / b_clipped
+    
+    # Additional safety: clip extreme results
+    result = np.clip(result, -1e4, 1e4)
+    return result
+
+
+def _clip_extreme_values(arr: np.ndarray, max_abs_value: float = 1e6) -> np.ndarray:
+    """Clip extreme values to prevent NaN/Inf in model."""
+    return np.clip(arr, -max_abs_value, max_abs_value)
 
 
 # NOTE: Removed redundant @register_feature decorators.
@@ -150,6 +163,17 @@ def apply_feature_pipeline(seq: torch.Tensor, pipeline: List[str]) -> torch.Tens
     t_range = t.max() - t.min()
     if t_range > 1e-8:  # {ДОБАВЛЕНО: защита от деления на ноль}/{избежать NaN при одинаковых временных метках}/{стабильная нормализация}
         t = (t - t.min()) / t_range  # Normalize to [0,1]
+    
+    # Additional safety: ensure minimum time step to prevent extreme derivatives
+    t_min_step = 1e-6  # Minimum time step in normalized units
+    if len(t) > 1:
+        dt_raw = np.diff(t)
+        dt_raw = np.maximum(dt_raw, t_min_step)  # Ensure minimum step
+        # Reconstruct time with minimum steps
+        t_corrected = np.zeros_like(t)
+        t_corrected[0] = t[0]
+        t_corrected[1:] = t[0] + np.cumsum(dt_raw)
+        t = t_corrected
 
     dt = compute_dt(t)
     v = compute_velocity(x, y, dt)
@@ -173,7 +197,12 @@ def apply_feature_pipeline(seq: torch.Tensor, pipeline: List[str]) -> torch.Tens
     # prate - pressure rate (derivative of normalized pressure)
     prate = np.zeros_like(p)
     if len(p) > 1:
-        prate[1:] = np.diff(p) / (dt[1:] + 1e-8)
+        # Use safer division for pressure rate
+        dp = np.diff(p)
+        dt_safe = np.maximum(dt[1:], 1e-6)  # Ensure minimum time step
+        prate[1:] = dp / dt_safe
+        # Clip extreme pressure rates
+        prate = np.clip(prate, -1e3, 1e3)
     
     # path_velocity - magnitude of velocity vector
     path_velocity = np.sqrt(v["vx"]**2 + v["vy"]**2)
@@ -185,6 +214,31 @@ def apply_feature_pipeline(seq: torch.Tensor, pipeline: List[str]) -> torch.Tens
     
     # abs_delta_pressure - absolute change in pressure between consecutive points
     abs_delta_pressure = np.abs(np.diff(p, prepend=p[0]))
+
+    # Clip extreme values to prevent NaN/Inf in model
+    v["vx"] = _clip_extreme_values(v["vx"])
+    v["vy"] = _clip_extreme_values(v["vy"])
+    a["ax"] = _clip_extreme_values(a["ax"])
+    a["ay"] = _clip_extreme_values(a["ay"])
+    j["jx"] = _clip_extreme_values(j["jx"])
+    j["jy"] = _clip_extreme_values(j["jy"])
+    j["jerk"] = _clip_extreme_values(j["jerk"])
+    prate = _clip_extreme_values(prate)
+    path_velocity = _clip_extreme_values(path_velocity)
+    abs_delta_pressure = _clip_extreme_values(abs_delta_pressure)
+    
+    # Additional safety: replace any remaining NaN/Inf with zeros
+    for key in ["vx", "vy"]:
+        v[key] = np.nan_to_num(v[key], nan=0.0, posinf=0.0, neginf=0.0)
+    for key in ["ax", "ay"]:
+        a[key] = np.nan_to_num(a[key], nan=0.0, posinf=0.0, neginf=0.0)
+    for key in ["jx", "jy", "jerk"]:
+        j[key] = np.nan_to_num(j[key], nan=0.0, posinf=0.0, neginf=0.0)
+    
+    prate = np.nan_to_num(prate, nan=0.0, posinf=0.0, neginf=0.0)
+    path_velocity = np.nan_to_num(path_velocity, nan=0.0, posinf=0.0, neginf=0.0)
+    path_tangent_angle = np.nan_to_num(path_tangent_angle, nan=0.0, posinf=0.0, neginf=0.0)
+    abs_delta_pressure = np.nan_to_num(abs_delta_pressure, nan=0.0, posinf=0.0, neginf=0.0)
 
     name_to_array: Dict[str, np.ndarray] = {
         "t": t,
@@ -234,6 +288,12 @@ def apply_feature_pipeline(seq: torch.Tensor, pipeline: List[str]) -> torch.Tens
         return seq
 
     out = np.stack(channels, axis=1)
+    
+    # Final check for NaN/Inf values
+    if np.isnan(out).any() or np.isinf(out).any():
+        print(f"Warning: NaN/Inf detected in features. Replacing with zeros.")
+        out = np.nan_to_num(out, nan=0.0, posinf=0.0, neginf=0.0)
+    
     return torch.from_numpy(out).type_as(seq)
 
 
