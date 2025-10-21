@@ -116,9 +116,11 @@ export async function POST(req: NextRequest) {
   if (data.pseudouser_id)
     insertBody.original_pseudouser_id = data.pseudouser_id;
 
-  const { error: forgedError } = await supabaseSR
+  const { data: insertData, error: forgedError } = await supabaseSR
     .from('forged_signatures')
-    .insert(insertBody);
+    .insert(insertBody)
+    .select('id')
+    .single();
 
   if (forgedError) {
     console.error('Insert error', forgedError);
@@ -128,5 +130,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ 
+    success: true, 
+    id: insertData.id 
+  });
 }

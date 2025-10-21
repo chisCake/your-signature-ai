@@ -47,7 +47,7 @@ CREATE TABLE genuine_signatures (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
     pseudouser_id UUID REFERENCES pseudousers(id) ON DELETE CASCADE,
-    features_table TEXT NOT NULL, -- данные подписи в формате csv: 1 строка: "t,x,y,p[,...]", 2 - данные в формате csv: 1 строка: "t,x,y,p[,...]", 2 - данные
+    features_table TEXT NOT NULL, -- данные подписи в формате csv: 1 строка: "t,x,y,p[,...]", 2 - данные
     input_type VARCHAR(20) CHECK (input_type IN ('mouse', 'touch', 'pen')), -- способ ввода подписи
     user_for_forgery BOOLEAN DEFAULT false, -- используется как экземпляр для подделок, устанавливается пользователем
     mod_for_forgery BOOLEAN DEFAULT true, -- используется как экземпляр для подделок, устанавливается модератором

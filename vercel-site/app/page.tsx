@@ -8,6 +8,8 @@ import Canvas, { CanvasRef } from '@/components/signature/canvas';
 import { LoaderCircle, PenLine, RotateCcw } from 'lucide-react';
 import { csvStringToPoints } from '@/lib/utils/signature-utils';
 import { toast } from '@/components/ui/toast';
+import { useInferenceServer, ForgeryAnalysisResponse } from '@/lib/inference-client';
+import { ComparisonResultModal } from '@/components/signature/comparison-result-modal';
 
 // Адаптивные размеры холста для мобильных устройств
 const CANVAS_SIZE_MOBILE = 'w-[280px] h-[210px] sm:w-[320px] sm:h-[240px]';
@@ -21,6 +23,13 @@ export default function Home() {
   const [loadingSignature, setLoadingSignature] = useState(true);
   const [loadingResult, setLoadingResult] = useState(false);
   const [mobileMode, setMobileMode] = useState(false);
+  
+  // Состояние для модального окна с результатом анализа подделки
+  const [forgeryResult, setForgeryResult] = useState<ForgeryAnalysisResponse | null>(null);
+  const [showForgeryModal, setShowForgeryModal] = useState(false);
+  
+  // Хук для работы с inference сервером
+  const { analyzeForgeryById, isLoading: inferenceLoading, error: inferenceError } = useInferenceServer();
 
   const getNewSignature = () => {
     setLoadingSignature(true);
@@ -48,7 +57,7 @@ export default function Home() {
     getNewSignature();
   };
 
-  const handleSaveButtonClick = () => {
+  const handleSaveButtonClick = async () => {
     const canvas = canvasRef.current;
     if (canvas) {
       const signatureData = canvas.getSignatureData();
@@ -61,27 +70,61 @@ export default function Home() {
 
       setLoadingResult(true);
       
-      fetch('/api/forgery', {
-        method: 'POST',
-        body: JSON.stringify({
-          originalSignatureId: originalSignatureId,
-          forgedSignatureData: signatureData,
-          inputType: inputType,
-        }),
-      })
-        .then(_res => _res.json())
-        .then(() => {
-          // TODO: результаты оценки моделью
-
-          canvas.clear();
-          getNewSignature();
-        })
-        .catch(error => {
-          console.error('Error saving signature:', error);
-        })
-        .finally(() => {
-          setLoadingResult(false);
+      try {
+        // Сохраняем подделку в БД
+        const saveResponse = await fetch('/api/forgery', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            originalSignatureId: originalSignatureId,
+            forgedSignatureData: signatureData,
+            inputType: inputType,
+          }),
         });
+
+        if (!saveResponse.ok) {
+          throw new Error('Ошибка сохранения подделки');
+        }
+
+        const saveResult = await saveResponse.json();
+        // console.log('Save result:', saveResult);
+        
+        const forgedSignatureId = saveResult.id;
+        // console.log('Forged signature ID:', forgedSignatureId);
+
+        if (!forgedSignatureId) {
+          throw new Error('Не удалось получить ID сохраненной подписи');
+        }
+
+        // console.log('Calling analyzeForgeryById with:', {
+        //   originalSignatureId,
+        //   forgedSignatureId
+        // });
+
+        // Анализируем подделку по ID сохраненной подписи
+        const analysisResult = await analyzeForgeryById(
+          originalSignatureId,
+          forgedSignatureId
+        );
+
+        // Показываем результат в модальном окне
+        setForgeryResult(analysisResult);
+        setShowForgeryModal(true);
+
+        // Очищаем холст и загружаем новую подпись
+        canvas.clear();
+        getNewSignature();
+
+      } catch (error) {
+        console.error('Error saving and analyzing signature:', error);
+        toast({ 
+          description: 'Ошибка при сохранении подписи или анализе'
+        });
+      } finally {
+        setLoadingResult(false);
+      }
     }
   };
 
@@ -162,7 +205,7 @@ export default function Home() {
                     <LoaderCircle size={mobileMode ? 16 : 24} className='ml-2 animate-spin' />
                   </>
                 ) : (
-                  'Сохранить подпись'
+                  'Анализировать подпись'
                 )}
               </Button>
             </div>
@@ -176,7 +219,7 @@ export default function Home() {
         <ul className='space-y-2 text-sm text-muted-foreground'>
           <li>• Изучите оригинальную подпись выше</li>
           <li>• Воспроизведите её на холсте ниже</li>
-          <li>• Нажмите &quot;Сохранить подпись&quot; для анализа</li>
+          <li>• Нажмите &quot;Анализировать подпись&quot; для анализа</li>
           <li>• ИИ оценит качество вашей подделки</li>
         </ul>
       </div>
@@ -190,6 +233,15 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Модальное окно с результатом анализа подделки */}
+      <ComparisonResultModal
+        isOpen={showForgeryModal}
+        onClose={() => setShowForgeryModal(false)}
+        result={forgeryResult}
+        isLoading={inferenceLoading}
+        error={inferenceError}
+      />
     </div>
   );
 }
