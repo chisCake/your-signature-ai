@@ -208,8 +208,6 @@ dmypy.json
 # ===========================================
 
 # Model files
-*.pth
-*.pt
 *.pkl
 *.pickle
 *.h5

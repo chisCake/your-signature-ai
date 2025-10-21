@@ -1,0 +1,70 @@
+"""
+Health check эндпоинты
+"""
+
+import logging
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import JSONResponse
+from utils.supabase_client import SupabaseClient
+from utils.model_loader import ModelLoader
+
+# Импортируем функции для dependency injection
+def get_supabase_client() -> SupabaseClient:
+    # Импортируем глобальные экземпляры из main.py
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from main import get_supabase_client as main_get_supabase_client
+    return main_get_supabase_client()
+
+def get_model_loader() -> ModelLoader:
+    # Импортируем глобальные экземпляры из main.py
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from main import get_model_loader as main_get_model_loader
+    return main_get_model_loader()
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.get("/health")
+async def health_check(
+    supabase_client: SupabaseClient = Depends(get_supabase_client),
+    model_loader: ModelLoader = Depends(get_model_loader)
+):
+    """Проверка состояния сервера"""
+    try:
+        status = {
+            "status": "healthy",
+            "supabase_connected": supabase_client is not None,
+            "model_loaded": model_loader is not None and model_loader.is_loaded(),
+            "timestamp": None  # Можно добавить текущее время
+        }
+        
+        # Проверка доступности модели
+        if model_loader and model_loader.is_loaded():
+            status["model_info"] = model_loader.get_model_info()
+        
+        return JSONResponse(content=status)
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+
+
+@router.get("/")
+async def root():
+    """Корневой endpoint"""
+    return {
+        "message": "Signature Inference Server",
+        "version": "1.0.0",
+        "endpoints": {
+            "health": "/health",
+            "forgery_by_id": "/forgery-by-id",
+            "forgery_by_data": "/forgery-by-data",
+            "docs": "/docs"
+        }
+    }
