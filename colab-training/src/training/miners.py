@@ -1,119 +1,74 @@
-from __future__ import annotations
-
-from typing import Tuple
+# src/training/miners.py
 import torch
+import torch.nn as nn
 
-
-class SemiHardMiner:
-    """
-    Online semi-hard triplet miner (FaceNet-style): for each anchor, choose a positive with higher distance than easy positives,
-    and a negative that is harder than positives but still violates margin.
-    Expects embeddings [B, D] and labels [B]. Returns (anchor_idx, pos_idx, neg_idx) tensors.
-
-    Optionally supports length-aware negative selection via `lengths` and `length_tolerance_ratio`.
-    """
-
-    def __init__(self, margin: float = 0.2, length_tolerance_ratio: float | None = None):
+class TripletMiner:
+    """Simple online miner producing (anchor, positive, negative) tensors.
+       Mode: 'semi-hard' or 'hard'."""
+    def __init__(self, mode: str = "semi-hard", margin: float = 0.2):
+        assert mode in ("semi-hard", "hard", "batch-all")
+        self.mode = mode
         self.margin = margin
-        self.length_tolerance_ratio = length_tolerance_ratio
 
-    @torch.no_grad()
-    def __call__(
-        self,
-        emb: torch.Tensor,
-        labels: torch.Tensor,
-        lengths: torch.Tensor | None = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # {ИЗМЕНЕНО: Euclidean distance}/{майнеры должны работать с raw embeddings}/{mining будет согласован с loss function}
-        dist = torch.cdist(emb, emb, p=2)  # [B, B]
-        B = emb.size(0)
-        device = emb.device
+    def set_mode(self, mode: str):
+        self.mode = mode
 
-        anchors = []
-        positives = []
-        negatives = []
+    def __call__(self, embeddings: torch.Tensor, labels: torch.Tensor):
+        """
+        embeddings: (B, D)
+        labels: (B,) integers
+        returns: (anchor, positive, negative) each shape (N_triplets, D)
+        """
+        device = embeddings.device
+        B = embeddings.size(0)
+        # Pairwise distance matrix
+        dist = torch.cdist(embeddings, embeddings, p=2)  # (B, B)
+        labels = labels.view(-1, 1)
+        same = (labels == labels.t())  # (B, B)
+        diff = ~same
 
+        anchors, positives, negatives = [], [], []
         for i in range(B):
-            mask_pos = labels == labels[i]
-            mask_neg = labels != labels[i]
-            if lengths is not None and self.length_tolerance_ratio is not None:
-                tol = max(1.0, float(self.length_tolerance_ratio) * float(lengths[i]))
-                similar_len = torch.abs(lengths - lengths[i]) <= tol
-                mask_neg = mask_neg & similar_len
-            pos_dist = dist[i][mask_pos]
-            neg_dist = dist[i][mask_neg]
-            if pos_dist.numel() < 2 or neg_dist.numel() == 0:
+            pos_idx = torch.where(same[i])[0]
+            neg_idx = torch.where(diff[i])[0]
+            # remove self
+            pos_idx = pos_idx[pos_idx != i]
+            if pos_idx.numel() == 0 or neg_idx.numel() == 0:
                 continue
-            ap_dist = pos_dist.max()  # semi-hard: pick a relatively hard positive
-            # negatives harder than ap, but still within margin violation
-            valid_negs = neg_dist[(neg_dist < ap_dist + self.margin) & (neg_dist > ap_dist)]
-            if valid_negs.numel() == 0:
-                # fallback: pick the closest negative to the anchor among all negatives
-                neg_choice = torch.argmin(neg_dist)
-            else:
-                neg_choice = torch.argmin(valid_negs)
-
-            # map back to global indices
-            pos_idx_global = torch.arange(B, device=device)[mask_pos][torch.argmax(pos_dist)]
-            neg_idx_global = torch.arange(B, device=device)[mask_neg][neg_choice]
+            pos_dists = dist[i][pos_idx]
+            neg_dists = dist[i][neg_idx]
+            # pick positive: nearest positive (easy choice)
+            p_rel = torch.argmin(pos_dists)
+            p = pos_idx[p_rel]
+            if self.mode == "semi-hard":
+                # semi-hard: neg such that d_pos < d_neg < d_pos + margin
+                d_pos = pos_dists[p_rel]
+                candidate_mask = (neg_dists > d_pos) & (neg_dists < d_pos + self.margin)
+                cand = torch.where(candidate_mask)[0]
+                if cand.numel() > 0:
+                    n_rel = cand[torch.randint(0, cand.numel(), (1,)).item()]
+                    n = neg_idx[n_rel]
+                else:
+                    # fallback to hardest neg
+                    n_rel = torch.argmin(neg_dists)
+                    n = neg_idx[n_rel]
+            elif self.mode == "hard":
+                # hardest negative (nearest negative)
+                n_rel = torch.argmin(neg_dists)
+                n = neg_idx[n_rel]
+            else:  # batch-all
+                # produce multiple triplets per anchor (not implemented heavy)
+                n_rel = torch.argmin(neg_dists)
+                n = neg_idx[n_rel]
 
             anchors.append(i)
-            positives.append(int(pos_idx_global))
-            negatives.append(int(neg_idx_global))
+            positives.append(p.item())
+            negatives.append(n.item())
 
         if len(anchors) == 0:
-            return (torch.empty(0, dtype=torch.long, device=device),) * 3
-        return (
-            torch.tensor(anchors, dtype=torch.long, device=device),
-            torch.tensor(positives, dtype=torch.long, device=device),
-            torch.tensor(negatives, dtype=torch.long, device=device),
-        )
-
-
-class HardMiner:
-    """Online hard miner: hardest positive and hardest negative (closest negative)."""
-
-    def __init__(self, margin: float = 0.2, length_tolerance_ratio: float | None = None):
-        self.margin = margin
-        self.length_tolerance_ratio = length_tolerance_ratio
-
-    @torch.no_grad()
-    def __call__(
-        self,
-        emb: torch.Tensor,
-        labels: torch.Tensor,
-        lengths: torch.Tensor | None = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        # Euclidean distance (L2 norm) - works with raw embeddings
-        dist = torch.cdist(emb, emb, p=2)  # [B, B]
-        B = emb.size(0)
-        device = emb.device
-
-        anchors = []
-        positives = []
-        negatives = []
-        for i in range(B):
-            mask_pos = labels == labels[i]
-            mask_neg = labels != labels[i]
-            if lengths is not None and self.length_tolerance_ratio is not None:
-                tol = max(1.0, float(self.length_tolerance_ratio) * float(lengths[i]))
-                similar_len = torch.abs(lengths - lengths[i]) <= tol
-                mask_neg = mask_neg & similar_len
-            pos_dist = dist[i][mask_pos]
-            neg_dist = dist[i][mask_neg]
-            if pos_dist.numel() < 2 or neg_dist.numel() == 0:
-                continue
-            pos_idx_global = torch.arange(B, device=device)[mask_pos][torch.argmax(pos_dist)]
-            neg_idx_global = torch.arange(B, device=device)[mask_neg][torch.argmin(neg_dist)]
-            anchors.append(i)
-            positives.append(int(pos_idx_global))
-            negatives.append(int(neg_idx_global))
-        if len(anchors) == 0:
-            return (torch.empty(0, dtype=torch.long, device=device),) * 3
-        return (
-            torch.tensor(anchors, dtype=torch.long, device=device),
-            torch.tensor(positives, dtype=torch.long, device=device),
-            torch.tensor(negatives, dtype=torch.long, device=device),
-        )
-
-
+            # fallback: random triplet
+            return embeddings, embeddings, embeddings
+        a = embeddings[anchors]
+        p = embeddings[positives]
+        n = embeddings[negatives]
+        return a, p, n

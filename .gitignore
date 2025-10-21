@@ -359,6 +359,8 @@ colab-training/data/emb/
 colab-training/data/tmp/
 vercel-site/data/tmp/
 
+colab-training/*.md
+
 # Build outputs
 vercel-site/.next/
 vercel-site/out/
