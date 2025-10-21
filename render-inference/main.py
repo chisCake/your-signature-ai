@@ -63,12 +63,12 @@ def initialize_supabase_client() -> SupabaseClient:
 
 
 def initialize_model() -> ModelLoader:
-    """Инициализация модели и загрузка в память"""
+    """Инициализация модели с автоматической конфигурацией"""
     try:
         model_path = os.getenv('MODEL_PATH')
-        loader = ModelLoader(model_path)
-        loader.load_model()
-        logger.info(f"Model loaded successfully from {model_path}")
+        # Используем автоматическую конфигурацию ленивой загрузки
+        loader = ModelLoader(model_path, lazy_load=None)
+        logger.info(f"Model loader initialized for {model_path}")
         return loader
     except Exception as e:
         logger.error(f"Failed to initialize model: {e}")

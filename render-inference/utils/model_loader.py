@@ -4,10 +4,28 @@
 
 import os
 import logging
+import gc
+import psutil
 from typing import Optional, Any, Dict
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+# Импорт конфигурации памяти
+try:
+    from memory_config import MemoryConfig
+except ImportError:
+    # Fallback если файл не найден
+    class MemoryConfig:
+        @classmethod
+        def apply_torch_settings(cls):
+            pass
+        @classmethod
+        def get_model_loading_kwargs(cls):
+            return {"map_location": "cpu"}
+        @classmethod
+        def should_use_lazy_loading(cls):
+            return True
 
 logger = logging.getLogger(__name__)
 
@@ -20,26 +38,44 @@ except ImportError:
 
 
 class ModelLoader:
-    """Класс для загрузки и управления SignatureEncoder моделью"""
+    """Класс для загрузки и управления SignatureEncoder моделью с оптимизацией памяти"""
     
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, lazy_load: Optional[bool] = None):
         """
         Инициализация загрузчика модели
         
         Args:
             model_path: Путь к файлу модели (.pt)
+            lazy_load: Если True, модель загружается только при первом использовании.
+                      Если None, определяется автоматически из конфигурации.
         """
+        # Применяем настройки PyTorch для экономии памяти
+        MemoryConfig.apply_torch_settings()
+        
         self.model_path = model_path
         self.model: Optional[SignatureEncoder] = None
         self.device = self._get_device()
         self.is_model_loaded = False
         self.model_config: Optional[Dict] = None
         
+        # Определяем режим ленивой загрузки
+        if lazy_load is None:
+            self.lazy_load = MemoryConfig.should_use_lazy_loading()
+        else:
+            self.lazy_load = lazy_load
+            
+        self.checkpoint_cache: Optional[Dict] = None
+        
         logger.info(f"ModelLoader initialized with path: {model_path}")
         logger.info(f"Using device: {self.device}")
+        logger.info(f"Lazy loading: {self.lazy_load}")
         
         if SignatureEncoder is None:
             raise ImportError("SignatureEncoder class not available. Check colab-training/src path.")
+        
+        # Если не ленивая загрузка, загружаем сразу
+        if not self.lazy_load:
+            self.load_model()
     
     def _get_device(self) -> torch.device:
         """Определение устройства для работы модели"""
@@ -55,16 +91,50 @@ class ModelLoader:
         
         return device
     
+    def _log_memory_usage(self, stage: str) -> None:
+        """Логирование использования памяти"""
+        try:
+            process = psutil.Process()
+            memory_info = process.memory_info()
+            memory_mb = memory_info.rss / 1024 / 1024
+            
+            # Получение информации о GPU памяти если доступно
+            gpu_info = ""
+            if torch.cuda.is_available():
+                gpu_memory = torch.cuda.memory_allocated() / 1024 / 1024
+                gpu_max = torch.cuda.max_memory_allocated() / 1024 / 1024
+                gpu_info = f", GPU: {gpu_memory:.1f}MB (max: {gpu_max:.1f}MB)"
+            
+            logger.info(f"Memory usage at {stage}: {memory_mb:.1f}MB{gpu_info}")
+        except Exception as e:
+            logger.warning(f"Could not get memory info: {e}")
+    
+    def _ensure_model_loaded(self) -> None:
+        """Обеспечивает загрузку модели при необходимости"""
+        if not self.is_model_loaded:
+            logger.info("Model not loaded, loading now...")
+            self.load_model()
+    
     def load_model(self) -> None:
-        """Загрузка модели SignatureEncoder из checkpoint файла"""
+        """Загрузка модели SignatureEncoder из checkpoint файла с оптимизацией памяти"""
         try:
             if not os.path.exists(self.model_path):
                 raise FileNotFoundError(f"Model file not found: {self.model_path}")
             
+            self._log_memory_usage("before_model_load")
             logger.info(f"Loading SignatureEncoder from {self.model_path}...")
             
-            # Загрузка checkpoint
-            checkpoint = torch.load(self.model_path, map_location=self.device)
+            # Загрузка checkpoint с оптимизацией памяти
+            loading_kwargs = MemoryConfig.get_model_loading_kwargs()
+            loading_kwargs["map_location"] = self.device
+            
+            # Убираем неподдерживаемые параметры
+            safe_kwargs = {}
+            for key, value in loading_kwargs.items():
+                if key in ["map_location", "weights_only"]:
+                    safe_kwargs[key] = value
+            
+            checkpoint = torch.load(self.model_path, **safe_kwargs)
             
             # Извлечение конфигурации модели из checkpoint
             if isinstance(checkpoint, dict) and 'config' in checkpoint:
@@ -82,6 +152,8 @@ class ModelLoader:
                     'dropout': 0.2      # Исправлено: 0.2 как в обучении
                 }
                 logger.warning("No model config found in checkpoint, using defaults")
+            
+            self._log_memory_usage("after_checkpoint_load")
             
             # Создание модели с правильной архитектурой
             self.model = SignatureEncoder(
@@ -116,7 +188,13 @@ class ModelLoader:
             # Установка режима оценки
             self.model.eval()
             
+            # Очистка кэша checkpoint для экономии памяти
+            self.checkpoint_cache = checkpoint
+            del checkpoint
+            gc.collect()
+            
             self.is_model_loaded = True
+            self._log_memory_usage("after_model_load")
             logger.info("SignatureEncoder loaded successfully")
             
         except Exception as e:
@@ -137,7 +215,7 @@ class ModelLoader:
     
     def encode_signature(self, signature_data: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
-        Кодирование подписи в эмбеддинг
+        Кодирование подписи в эмбеддинг с автоматической загрузкой модели
         
         Args:
             signature_data: Тензор с данными подписи (B, T, F)
@@ -146,6 +224,9 @@ class ModelLoader:
         Returns:
             L2-нормализованные эмбеддинги (B, embedding_dim)
         """
+        # Обеспечиваем загрузку модели при необходимости
+        self._ensure_model_loaded()
+        
         if not self.is_loaded():
             raise RuntimeError("Model is not loaded")
         
@@ -197,3 +278,52 @@ class ModelLoader:
             })
         
         return info
+    
+    def unload_model(self) -> None:
+        """Выгрузка модели из памяти для экономии ресурсов"""
+        if self.is_model_loaded:
+            logger.info("Unloading model from memory...")
+            self._log_memory_usage("before_unload")
+            
+            # Очистка модели
+            if self.model is not None:
+                del self.model
+                self.model = None
+            
+            # Очистка кэша checkpoint
+            if self.checkpoint_cache is not None:
+                del self.checkpoint_cache
+                self.checkpoint_cache = None
+            
+            # Принудительная очистка памяти
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
+            self.is_model_loaded = False
+            self._log_memory_usage("after_unload")
+            logger.info("Model unloaded successfully")
+    
+    def get_memory_info(self) -> dict:
+        """Получение информации об использовании памяти"""
+        try:
+            process = psutil.Process()
+            memory_info = process.memory_info()
+            
+            info = {
+                "rss_mb": memory_info.rss / 1024 / 1024,
+                "vms_mb": memory_info.vms / 1024 / 1024,
+                "model_loaded": self.is_model_loaded
+            }
+            
+            if torch.cuda.is_available():
+                info.update({
+                    "gpu_allocated_mb": torch.cuda.memory_allocated() / 1024 / 1024,
+                    "gpu_cached_mb": torch.cuda.memory_reserved() / 1024 / 1024,
+                    "gpu_max_allocated_mb": torch.cuda.max_memory_allocated() / 1024 / 1024
+                })
+            
+            return info
+        except Exception as e:
+            logger.warning(f"Could not get memory info: {e}")
+            return {"error": str(e)}
