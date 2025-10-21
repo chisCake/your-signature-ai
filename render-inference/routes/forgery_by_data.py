@@ -8,24 +8,16 @@ from typing import Optional, List, Union
 import logging
 import torch
 import torch.nn.functional as F
-import numpy as np # Используется для работы с np.array
+import numpy as np 
 
-# Импорт зависимостей из главного файла
-# Предполагается, что main.py находится в родительской директории
-try:
-    from main import get_supabase_client, get_model_loader
-    from utils.supabase_client import SupabaseClient
-    from utils.model_loader import ModelLoader
-    from utils.preprocessing import v1_preprocess_signature_data, parse_csv_signature_data
-except ImportError as e:
-    logging.error(f"Failed to import dependencies from main. Please check the project structure or run context: {e}")
-    # Использование заглушек для предотвращения сбоя импорта в IDE
-    SupabaseClient = type('SupabaseClient', (object,), {'get_signature_data': lambda self, id: None})
-    ModelLoader = type('ModelLoader', (object,), {
-        'encode_signature': lambda self, tensor: torch.rand(1, 128)
-    })
-    v1_preprocess_signature_data = lambda data: np.zeros((100, 3))
-    parse_csv_signature_data = lambda data: []
+# --- ИСПРАВЛЕННЫЙ ИМПОРТ ЗАВИСИМОСТЕЙ ---
+# Импортируем функции зависимостей из main.py и необходимые типы
+# Это устраняет проблему циклического импорта, предполагая, что 
+# get_supabase_client и get_model_loader определены в main.py до импорта роутеров.
+from main import get_supabase_client, get_model_loader
+from utils.supabase_client import SupabaseClient
+from utils.model_loader import ModelLoader
+from utils.preprocessing import v1_preprocess_signature_data, parse_csv_signature_data
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +40,7 @@ class ForgeryAnalysisResponse(BaseModel):
 
 @router.post("/", response_model=ForgeryAnalysisResponse)
 async def analyze_forgery_by_data(
-    request_body: ForgeryByDataRequest, # Переименовано в request_body для ясности
+    request_body: ForgeryByDataRequest, 
     supabase_client: SupabaseClient = Depends(get_supabase_client),
     model_loader: ModelLoader = Depends(get_model_loader)
 ):
@@ -65,9 +57,7 @@ async def analyze_forgery_by_data(
     """
     # Теперь мы получаем ID напрямую из валидированного объекта
     original_id = request_body.original_id
-    
-    # Инициализация для обработки ошибок
-    current_original_id = original_id
+    current_original_id = original_id # Для обработки ошибок
 
     try:
         logger.info("=== FORGERY BY DATA REQUEST START ===")
@@ -80,9 +70,8 @@ async def analyze_forgery_by_data(
             raise HTTPException(status_code=404, detail=f"Original signature {original_id} not found")
 
         # --- Шаг 2: Обработка данных поддельной подписи ---
-        
         forgery_data: List[List[float]]
-        
+
         if isinstance(request_body.forgery_data, str):
             # Если это CSV строка, парсим её
             logger.info("Parsing CSV forgery data")
@@ -96,7 +85,6 @@ async def analyze_forgery_by_data(
             raise HTTPException(status_code=400, detail="Invalid forgery data provided or failed to parse")
 
         # --- Шаг 3: Препроцессинг и подготовка тензоров ---
-
         original_features = v1_preprocess_signature_data(original_data)
         forgery_features = v1_preprocess_signature_data(forgery_data)
 
@@ -105,7 +93,6 @@ async def analyze_forgery_by_data(
         forgery_tensor = torch.from_numpy(forgery_features).float().unsqueeze(0)
 
         # --- Шаг 4: Получение эмбеддингов и анализ ---
-
         original_embedding = model_loader.encode_signature(original_tensor)
         forgery_embedding = model_loader.encode_signature(forgery_tensor)
 
@@ -139,12 +126,12 @@ async def analyze_forgery_by_data(
         logger.error(f"Error analyzing forgery by data: {str(e)}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
-        
+
         # Возвращаем структурированный ответ об ошибке
         return ForgeryAnalysisResponse(
             is_forgery=False,
             similarity_score=0.0,
             threshold=0.75,
             original_id=current_original_id,
-            error=f"Analysis failed: {str(e)}"
+            error=f"Analysis failed: {type(e).__name__}: {str(e)}"
         )
