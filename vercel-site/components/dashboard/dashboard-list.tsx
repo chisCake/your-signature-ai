@@ -1,16 +1,16 @@
-import Link from 'next/link';
-import { getUser, isMod, isAdmin } from '@/lib/utils/auth-server-utils';
-import { Button } from '@/components/ui/button';
+'use client';
 
-export async function DashboardList() {
-  const user = await getUser();
-  const modFlag = await isMod(user);
-  const adminFlag = await isAdmin(user);
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { useUser } from '@/lib/hooks/use-user';
+
+export function DashboardList() {
+  const { user, isMod, isAdmin } = useUser();
 
   return (
     user && (
       <div className='flex flex-col lg:flex-row gap-2 items-start lg:items-center'>
-        {!modFlag && (
+        {!isMod && (
           <Button
             asChild
             size='sm'
@@ -21,7 +21,7 @@ export async function DashboardList() {
           </Button>
         )}
 
-        {modFlag && (
+        {isMod && (
           <>
             <span className='text-sm font-medium text-muted-foreground lg:hidden'>
               Dashboards:
@@ -43,7 +43,7 @@ export async function DashboardList() {
               >
                 <Link href='/dashboard-mod'>Mod</Link>
               </Button>
-              {adminFlag && (
+              {isAdmin && (
                 <Button
                   asChild
                   size='sm'

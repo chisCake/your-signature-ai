@@ -1,12 +1,12 @@
-import { isMod, isAdmin, getUser } from '@/lib/utils/auth-server-utils';
+'use client';
+
+import { useUser } from '@/lib/hooks/use-user';
 import Link from 'next/link';
 
-export async function ActionPageList() {
-  const user = await getUser();
-  const modFlag = await isMod(user);
-  const adminFlag = await isAdmin(user);
+export function ActionPageList() {
+  const { isMod, isAdmin } = useUser();
 
-  if (!modFlag) {
+  if (!isMod) {
     return null;
   }
 
@@ -30,7 +30,7 @@ export async function ActionPageList() {
       >
         Контроллируемое добавление
       </Link>
-      {adminFlag && (
+      {isAdmin && (
         <>
           <Link
             href='/'
