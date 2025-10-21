@@ -15,6 +15,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
+from dependencies import set_supabase_client, set_model_loader
 from routes.health import router as health_router
 from routes.forgery_by_id import router as forgery_by_id_router
 from routes.forgery_by_data import router as forgery_by_data_router
@@ -88,9 +89,11 @@ async def lifespan(app: FastAPI):
         
         # Инициализация Supabase клиента
         supabase_client = initialize_supabase_client()
+        set_supabase_client(supabase_client)
         
         # Инициализация модели
         model_loader = initialize_model()
+        set_model_loader(model_loader)
         
         logger.info("Inference server started successfully")
         
@@ -104,12 +107,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down inference server...")
 
 
-# Функция для внедрения зависимостей
-def get_supabase_client():
-    return supabase_client
-
-def get_model_loader():
-    return model_loader
+# Функции-зависимости теперь находятся в dependencies.py
 
 # Создание FastAPI приложения
 app = FastAPI(

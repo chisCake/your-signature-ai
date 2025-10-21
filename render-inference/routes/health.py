@@ -8,22 +8,8 @@ from fastapi.responses import JSONResponse
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
 
-# Импортируем функции для dependency injection
-def get_supabase_client() -> SupabaseClient:
-    # Импортируем глобальные экземпляры из main.py
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from main import get_supabase_client as main_get_supabase_client
-    return main_get_supabase_client()
-
-def get_model_loader() -> ModelLoader:
-    # Импортируем глобальные экземпляры из main.py
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from main import get_model_loader as main_get_model_loader
-    return main_get_model_loader()
+# Импортируем функции для dependency injection из dependencies.py
+from dependencies import get_supabase_client, get_model_loader
 
 logger = logging.getLogger(__name__)
 
