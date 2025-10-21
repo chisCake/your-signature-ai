@@ -16,10 +16,10 @@ from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
 from utils.preprocessing import v1_preprocess_signature_data
 
-# --- Импорт функций-зависимостей из main.py ---
+# --- Импорт функций-зависимостей из dependencies.py ---
 # Это устраняет циклический импорт, так как роутер импортирует только функции,
-# которые определены в main.py до импорта роутеров.
-from main import get_supabase_client, get_model_loader
+# которые определены в отдельном модуле зависимостей.
+from dependencies import get_supabase_client, get_model_loader
 
 
 logger = logging.getLogger(__name__)

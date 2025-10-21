@@ -11,10 +11,9 @@ import torch.nn.functional as F
 import numpy as np 
 
 # --- ИСПРАВЛЕННЫЙ ИМПОРТ ЗАВИСИМОСТЕЙ ---
-# Импортируем функции зависимостей из main.py и необходимые типы
-# Это устраняет проблему циклического импорта, предполагая, что 
-# get_supabase_client и get_model_loader определены в main.py до импорта роутеров.
-from main import get_supabase_client, get_model_loader
+# Импортируем функции зависимостей из dependencies.py
+# Это устраняет проблему циклического импорта
+from dependencies import get_supabase_client, get_model_loader
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
 from utils.preprocessing import v1_preprocess_signature_data, parse_csv_signature_data
