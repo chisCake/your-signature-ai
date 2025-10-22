@@ -196,7 +196,7 @@ export default function Home() {
                 size='lg'
                 className='w-full sm:w-auto min-w-[200px] lg:min-w-[300px] lg:min-h-[60px] lg:text-lg'
                 disabled={loadingResult}
-                icon={loadingResult ? LoaderCircle : PenLine}
+                icon={PenLine}
                 iconSize={mobileMode ? 16 : 24}
               >
                 {loadingResult ? (

@@ -281,7 +281,7 @@ export function SignatureModal({
               <Button
                 onClick={handleAnalyzeForgery}
                 disabled={isAnalyzing}
-                icon={isAnalyzing ? LoaderCircle : PenLine}
+                icon={PenLine}
               >
                 {isAnalyzing ? (
                   <>
