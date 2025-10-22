@@ -188,7 +188,7 @@ export default function ControlledSignatureAddition() {
         </div>
       </div>
       {modalOpen && (
-        <div className='fixed top-0 bottom-0 left-0 right-0 bg-black/50 z-10 w-full h-screen flex items-center justify-center'>
+        <div className='fixed top-0 bottom-0 left-0 right-0 bg-black/50 z-50 w-full h-screen flex items-center justify-center'>
           <div className='flex flex-col gap-4 border border-secondary rounded-lg p-4 bg-primary-foreground m-4 max-h-[95vh] overflow-y-auto'>
             <CreateSignatureSection
               canvasClassName={CANVAS_SIZE}

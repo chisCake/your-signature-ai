@@ -3,6 +3,8 @@
 import { useUser } from '@/lib/hooks/use-user';
 import Link from 'next/link';
 
+const LINK_CLASSES = 'px-3 py-2 sm:w-full rounded-md hover:bg-accent hover:text-accent-foreground transition-colors';
+
 export function ActionPageList() {
   const { isMod, isAdmin } = useUser();
 
@@ -14,19 +16,19 @@ export function ActionPageList() {
     <div className='flex flex-col lg:flex-row gap-2 lg:gap-4 items-start lg:items-center text-sm'>
       <Link
         href='/signatures'
-        className='px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors'
+        className={LINK_CLASSES}
       >
         Подписи
       </Link>
       <Link
         href='/users'
-        className='px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors'
+        className={LINK_CLASSES}
       >
         Пользователи
       </Link>
       <Link
         href='/controlled-signature-addition'
-        className='px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors'
+        className={LINK_CLASSES}
       >
         Контроллируемое добавление
       </Link>
@@ -34,13 +36,13 @@ export function ActionPageList() {
         <>
           <Link
             href='/'
-            className='px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors'
+            className={LINK_CLASSES}
           >
             ИИ Сервер
           </Link>
           <Link
             href='/'
-            className='px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors'
+            className={LINK_CLASSES}
           >
             Импорт/Экспорт
           </Link>
