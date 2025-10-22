@@ -64,25 +64,40 @@ async def analyze_forgery_by_id(
         logger.info(f"Analyzing forgery by ID: original={original_id}, forgery={forgery_id}")
 
         # --- Шаг 1: Получение данных из Supabase ---
+        logger.info("Step 1: Getting signature data from Supabase")
         original_data = supabase_client.get_signature_data(original_id, "genuine")
         if original_data is None:
             raise HTTPException(status_code=404, detail=f"Original signature {original_id} not found in genuine signatures")
+        logger.info(f"Original data retrieved, length: {len(original_data)}")
 
         forgery_data = supabase_client.get_signature_data(forgery_id, "forged")
         if forgery_data is None:
             raise HTTPException(status_code=404, detail=f"Forgery signature {forgery_id} not found in forged signatures")
+        logger.info(f"Forgery data retrieved, length: {len(forgery_data)}")
 
         # --- Шаг 2: Препроцессинг и подготовка тензоров ---
+        logger.info("Step 2: Preprocessing signature data")
         original_features = v1_preprocess_signature_data(original_data)
         forgery_features = v1_preprocess_signature_data(forgery_data)
+        logger.info(f"Preprocessing completed. Original features shape: {original_features.shape}, Forgery features shape: {forgery_features.shape}")
         
         original_tensor = torch.from_numpy(original_features).float().unsqueeze(0)
         forgery_tensor = torch.from_numpy(forgery_features).float().unsqueeze(0)
+        logger.info(f"Tensors created. Original tensor shape: {original_tensor.shape}, Forgery tensor shape: {forgery_tensor.shape}")
 
         # --- Шаг 3: Получение эмбеддингов и анализ ---
-        original_embedding = model_loader.encode_signature(original_tensor)
-        forgery_embedding = model_loader.encode_signature(forgery_tensor)
+        logger.info("Step 3: Getting embeddings from model")
+        try:
+            original_embedding = model_loader.encode_signature(original_tensor)
+            logger.info(f"Original embedding generated, shape: {original_embedding.shape}")
+            
+            forgery_embedding = model_loader.encode_signature(forgery_tensor)
+            logger.info(f"Forgery embedding generated, shape: {forgery_embedding.shape}")
+        except Exception as e:
+            logger.error(f"Failed to generate embeddings: {e}")
+            raise HTTPException(status_code=500, detail=f"Model inference failed: {str(e)}")
 
+        logger.info("Step 4: Calculating similarity")
         similarity_score = float(F.cosine_similarity(original_embedding, forgery_embedding, dim=1))
 
         threshold = 0.7 

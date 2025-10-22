@@ -70,6 +70,7 @@ class SupabaseClient:
             Список точек подписи или None если не найдена
         """
         try:
+            logger.info(f"Querying {table_name} for signature {signature_id}")
             result = self.client.table(table_name).select('features_table').eq('id', signature_id).single().execute()
             
             if result.data:
@@ -80,11 +81,11 @@ class SupabaseClient:
                 logger.info(f"Parsed data length: {len(parsed_data)}")
                 return parsed_data
             else:
-                logger.info(f"Signature {signature_id} not found in {table_name}")
+                logger.warning(f"Signature {signature_id} not found in {table_name}")
                 return None
                 
         except Exception as e:
-            logger.info(f"Error querying {table_name} for signature {signature_id}: {str(e)}")
+            logger.error(f"Error querying {table_name} for signature {signature_id}: {str(e)}")
             return None
     
     def _parse_csv_signature_data(self, csv_data: str) -> list:

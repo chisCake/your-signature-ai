@@ -1,0 +1,24 @@
+# Переменные окружения для оптимизации памяти на Render
+
+# Основные настройки
+ENVIRONMENT=production
+LAZY_LOADING=true
+
+# Путь к модели (должен быть установлен в Render)
+MODEL_PATH=models/v1.pt
+
+# Supabase настройки (должны быть установлены в Render)
+SUPABASE_URL=your_supabase_url
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Настройки сервера
+HOST=0.0.0.0
+PORT=8000
+
+# CORS настройки
+# Для продакшена укажите ваш домен Vercel/фронтенда
+# Можно указать несколько доменов через запятую
+FRONTEND_URL=https://your-frontend-domain.vercel.app,https://your-custom-domain.com
+
+# Логирование
+LOG_LEVEL=INFO
