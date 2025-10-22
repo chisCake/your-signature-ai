@@ -5,7 +5,7 @@
 
 import os
 from supabase import create_client, Client
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,55 +31,60 @@ class SupabaseClient:
         """Возвращает клиент Supabase"""
         return self.client
 
-    def get_signature_data(self, signature_id: str) -> Optional[list]:
+    def get_signature_data(self, signature_id: str, table_type: Literal["genuine", "forged"]) -> Optional[list]:
         """
-        Получает данные подписи по ID
+        Получает данные подписи по ID из указанной таблицы
         
         Args:
             signature_id: ID подписи
+            table_type: Тип таблицы для поиска ("genuine" или "forged")
             
         Returns:
             Список точек подписи или None если не найдена
         """
         try:
-            logger.info(f"Getting signature data for ID: {signature_id}")
+            logger.info(f"Getting signature data for ID: {signature_id}, table_type: {table_type}")
             
-            # Сначала пробуем найти в genuine_signatures
-            try:
-                result = self.client.table('genuine_signatures').select('features_table').eq('id', signature_id).single().execute()
-                
-                if result.data:
-                    # Парсим CSV данные
-                    csv_data = result.data['features_table']
-                    logger.info(f"Found CSV data in genuine_signatures, length: {len(csv_data)}")
-                    parsed_data = self._parse_csv_signature_data(csv_data)
-                    logger.info(f"Parsed data length: {len(parsed_data)}")
-                    return parsed_data
-            except Exception as e:
-                logger.info(f"Not found in genuine_signatures: {str(e)}")
-            
-            # Если не найдено в genuine_signatures, пробуем forged_signatures
-            logger.info("Trying forged_signatures")
-            try:
-                result = self.client.table('forged_signatures').select('features_table').eq('id', signature_id).single().execute()
-                
-                if result.data:
-                    # Парсим CSV данные
-                    csv_data = result.data['features_table']
-                    logger.info(f"Found CSV data in forged_signatures, length: {len(csv_data)}")
-                    parsed_data = self._parse_csv_signature_data(csv_data)
-                    logger.info(f"Parsed data length: {len(parsed_data)}")
-                    return parsed_data
-            except Exception as e:
-                logger.info(f"Not found in forged_signatures: {str(e)}")
-            
-            logger.warning(f"Signature {signature_id} not found in any table")
-            return None
+            if table_type == "genuine":
+                return self._get_signature_from_table(signature_id, "genuine_signatures")
+            elif table_type == "forged":
+                return self._get_signature_from_table(signature_id, "forged_signatures")
+            else:
+                raise ValueError(f"Invalid table_type: {table_type}. Must be 'genuine' or 'forged'")
             
         except Exception as e:
             logger.error(f"Error getting signature data for {signature_id}: {str(e)}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
+            return None
+    
+    def _get_signature_from_table(self, signature_id: str, table_name: str) -> Optional[list]:
+        """
+        Получает данные подписи из конкретной таблицы
+        
+        Args:
+            signature_id: ID подписи
+            table_name: Название таблицы
+            
+        Returns:
+            Список точек подписи или None если не найдена
+        """
+        try:
+            result = self.client.table(table_name).select('features_table').eq('id', signature_id).single().execute()
+            
+            if result.data:
+                # Парсим CSV данные
+                csv_data = result.data['features_table']
+                logger.info(f"Found CSV data in {table_name}, length: {len(csv_data)}")
+                parsed_data = self._parse_csv_signature_data(csv_data)
+                logger.info(f"Parsed data length: {len(parsed_data)}")
+                return parsed_data
+            else:
+                logger.info(f"Signature {signature_id} not found in {table_name}")
+                return None
+                
+        except Exception as e:
+            logger.info(f"Error querying {table_name} for signature {signature_id}: {str(e)}")
             return None
     
     def _parse_csv_signature_data(self, csv_data: str) -> list:

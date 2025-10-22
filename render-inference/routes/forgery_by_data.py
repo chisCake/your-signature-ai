@@ -33,8 +33,6 @@ class ForgeryAnalysisResponse(BaseModel):
     is_forgery: bool
     similarity_score: float
     threshold: float
-    original_id: str
-    forgery_id: Optional[str] = None
     error: Optional[str] = None
 
 @router.post("/", response_model=ForgeryAnalysisResponse)
@@ -56,7 +54,6 @@ async def analyze_forgery_by_data(
     """
     # Теперь мы получаем ID напрямую из валидированного объекта
     original_id = request_body.original_id
-    current_original_id = original_id # Для обработки ошибок
 
     try:
         logger.info("=== FORGERY BY DATA REQUEST START ===")
@@ -64,9 +61,9 @@ async def analyze_forgery_by_data(
         logger.info(f"Forgery data type: {type(request_body.forgery_data)}")
 
         # --- Шаг 1: Получение данных оригинальной подписи ---
-        original_data = supabase_client.get_signature_data(original_id)
+        original_data = supabase_client.get_signature_data(original_id, "genuine")
         if not original_data:
-            raise HTTPException(status_code=404, detail=f"Original signature {original_id} not found")
+            raise HTTPException(status_code=404, detail=f"Original signature {original_id} not found in genuine signatures")
 
         # --- Шаг 2: Обработка данных поддельной подписи ---
         forgery_data: List[List[float]]
@@ -109,8 +106,7 @@ async def analyze_forgery_by_data(
         result = ForgeryAnalysisResponse(
             is_forgery=is_forgery,
             similarity_score=similarity_score,
-            threshold=threshold,
-            original_id=original_id
+            threshold=threshold
         )
 
         logger.info(f"=== FORGERY BY DATA REQUEST SUCCESS ===")
@@ -131,6 +127,5 @@ async def analyze_forgery_by_data(
             is_forgery=False,
             similarity_score=0.0,
             threshold=0.75,
-            original_id=current_original_id,
             error=f"Analysis failed: {type(e).__name__}: {str(e)}"
         )

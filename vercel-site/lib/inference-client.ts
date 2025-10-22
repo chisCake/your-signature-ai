@@ -6,11 +6,10 @@
 import { useState } from 'react';
 
 interface ForgeryAnalysisResponse {
-  original_embedding: number[];
-  forgery_embedding: number[];
   similarity_score: number;
   is_forgery: boolean;
   threshold: number;
+  error?: string;
 }
 
 interface HealthResponse {
