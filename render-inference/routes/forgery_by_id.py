@@ -36,8 +36,6 @@ class ForgeryAnalysisResponse(BaseModel):
     is_forgery: bool
     similarity_score: float
     threshold: float
-    original_id: str
-    forgery_id: Optional[str] = None
     error: Optional[str] = None
 
 @router.post("/", response_model=ForgeryAnalysisResponse)
@@ -60,22 +58,19 @@ async def analyze_forgery_by_id(
     """
     original_id = request_body.original_id
     forgery_id = request_body.forgery_id
-    
-    current_original_id = original_id
-    current_forgery_id = forgery_id
 
     try:
         logger.info("=== FORGERY BY ID REQUEST START ===")
         logger.info(f"Analyzing forgery by ID: original={original_id}, forgery={forgery_id}")
 
         # --- Шаг 1: Получение данных из Supabase ---
-        original_data = supabase_client.get_signature_data(original_id)
+        original_data = supabase_client.get_signature_data(original_id, "genuine")
         if original_data is None:
-            raise HTTPException(status_code=404, detail=f"Original signature {original_id} not found")
+            raise HTTPException(status_code=404, detail=f"Original signature {original_id} not found in genuine signatures")
 
-        forgery_data = supabase_client.get_signature_data(forgery_id)
+        forgery_data = supabase_client.get_signature_data(forgery_id, "forged")
         if forgery_data is None:
-            raise HTTPException(status_code=404, detail=f"Forgery signature {forgery_id} not found")
+            raise HTTPException(status_code=404, detail=f"Forgery signature {forgery_id} not found in forged signatures")
 
         # --- Шаг 2: Препроцессинг и подготовка тензоров ---
         original_features = v1_preprocess_signature_data(original_data)
@@ -98,9 +93,7 @@ async def analyze_forgery_by_id(
         result = ForgeryAnalysisResponse(
             is_forgery=is_forgery,
             similarity_score=similarity_score,
-            threshold=threshold,
-            original_id=original_id,
-            forgery_id=forgery_id
+            threshold=threshold
         )
 
         logger.info(f"=== FORGERY BY ID REQUEST SUCCESS ===")
@@ -119,7 +112,5 @@ async def analyze_forgery_by_id(
             is_forgery=False,
             similarity_score=0.0,
             threshold=0.7,
-            original_id=current_original_id,
-            forgery_id=current_forgery_id,
             error=f"Analysis failed: {type(e).__name__}: {str(e)}"
         )
