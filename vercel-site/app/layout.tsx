@@ -12,6 +12,7 @@ import { ToastProvider } from '@/components/ui/toast';
 import { ConfirmDialogProvider } from '@/components/ui/alert-dialog';
 import { MobileNavigation } from '@/components/layout/mobile-navigation';
 import { Github } from 'lucide-react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -130,6 +131,7 @@ export default function RootLayout({
             </ThemeProvider>
           </ConfirmDialogProvider>
         </ToastProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
