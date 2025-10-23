@@ -12,70 +12,71 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 # Импорт конфигурации памяти
-try:
-    from memory_config import MemoryConfig
-except ImportError:
-    # Fallback если файл не найден
-    class MemoryConfig:
-        @classmethod
-        def apply_torch_settings(cls):
-            pass
-        @classmethod
-        def get_model_loading_kwargs(cls):
-            return {"map_location": "cpu"}
-        @classmethod
-        def should_use_lazy_loading(cls):
-            return True
+from memory_config import MemoryConfig
 
 logger = logging.getLogger(__name__)
 
-# Импорт архитектуры модели из локальной копии
-try:
-    from models.v1 import SignatureEncoder
-except ImportError:
-    logger.error("Could not import SignatureEncoder from models.v1")
-    SignatureEncoder = None
+# Импорт конфигурации модели
+from model_config import get_active_model_config
+
+# Динамический импорт модели на основе конфигурации
+def _import_model_class():
+    """Динамический импорт класса модели на основе конфигурации"""
+    try:
+        model_config = get_active_model_config()
+        module_name = model_config["module"]
+        class_name = model_config["class_name"]
+        
+        # Импортируем модуль
+        module = __import__(module_name, fromlist=[class_name])
+        model_class = getattr(module, class_name)
+        
+        logger.info(f"Successfully imported {class_name} from {module_name}")
+        return model_class
+    except Exception as e:
+        logger.error(f"Could not import model class: {e}")
+        return None
+
+# Получаем класс модели
+SignatureEncoder = _import_model_class()
 
 
 class ModelLoader:
     """Класс для загрузки и управления SignatureEncoder моделью с оптимизацией памяти"""
     
-    def __init__(self, model_path: str, lazy_load: Optional[bool] = None):
+    def __init__(self, model_path: str = None):
         """
         Инициализация загрузчика модели
         
         Args:
-            model_path: Путь к файлу модели (.pt)
-            lazy_load: Если True, модель загружается только при первом использовании.
-                      Если None, определяется автоматически из конфигурации.
+            model_path: Путь к файлу модели (.pt). Если не указан, берется из конфигурации
         """
         # Применяем настройки PyTorch для экономии памяти
         MemoryConfig.apply_torch_settings()
         
-        self.model_path = model_path
+        # Получаем конфигурацию активной модели
+        model_config = get_active_model_config()
+        
+        # Используем переданный путь или путь из конфигурации
+        self.model_path = model_path or model_config["checkpoint_path"]
+        self.model_config_info = model_config
+        
         self.model: Optional[SignatureEncoder] = None
         self.device = self._get_device()
         self.is_model_loaded = False
         self.model_config: Optional[Dict] = None
-        
-        # Определяем режим ленивой загрузки
-        if lazy_load is None:
-            self.lazy_load = MemoryConfig.should_use_lazy_loading()
-        else:
-            self.lazy_load = lazy_load
             
         self.checkpoint_cache: Optional[Dict] = None
         
-        logger.info(f"ModelLoader initialized with path: {model_path}")
+        logger.info(f"ModelLoader initialized with path: {self.model_path}")
         logger.info(f"Using device: {self.device}")
-        logger.info(f"Lazy loading: {self.lazy_load}")
+        logger.info(f"Model class: {model_config['class_name']} from {model_config['module']}")
         
         if SignatureEncoder is None:
-            raise ImportError("SignatureEncoder class not available. Check colab-training/src path.")
+            raise ImportError(f"Model class {model_config['class_name']} not available from {model_config['module']}")
         
-        # Если не ленивая загрузка, загружаем сразу
-        if not self.lazy_load:
-            self.load_model()
+        # Всегда загружаем модель сразу
+        self.load_model()
     
     def _get_device(self) -> torch.device:
         """Определение устройства для работы модели"""
@@ -110,10 +111,9 @@ class ModelLoader:
             logger.warning(f"Could not get memory info: {e}")
     
     def _ensure_model_loaded(self) -> None:
-        """Обеспечивает загрузку модели при необходимости"""
+        """Проверяет, что модель загружена"""
         if not self.is_model_loaded:
-            logger.info("Model not loaded, loading now...")
-            self.load_model()
+            raise RuntimeError("Model should be loaded at initialization. This indicates a bug.")
     
     def load_model(self) -> None:
         """Загрузка модели SignatureEncoder из checkpoint файла с оптимизацией памяти"""
@@ -260,13 +260,15 @@ class ModelLoader:
             "path": self.model_path,
             "device": str(self.device),
             "loaded": self.is_model_loaded,
-            "model_type": "SignatureEncoder",
+            "model_type": self.model_config_info["class_name"],
+            "module": self.model_config_info["module"],
+            "file_path": self.model_config_info["file_path"],
             "architecture": "CNN(1D) -> BiGRU -> Attention -> FC -> L2-normalized embedding"
         }
         
         # Добавление конфигурации модели
         if self.model_config:
-            info["config"] = self.model_config
+            info["model_config"] = self.model_config
         
         # Добавление информации о параметрах модели
         if hasattr(self.model, 'parameters'):

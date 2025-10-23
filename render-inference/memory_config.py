@@ -54,13 +54,6 @@ class MemoryConfig:
         return kwargs
     
     @classmethod
-    def should_use_lazy_loading(cls):
-        """Определяет, нужно ли использовать ленивую загрузку"""
-        # Используем ленивую загрузку в продакшене или при ограниченной памяти
-        return os.getenv("ENVIRONMENT", "development") == "production" or \
-               os.getenv("LAZY_LOADING", "true").lower() == "true"
-    
-    @classmethod
     def get_memory_warning_level(cls, memory_mb: float) -> str:
         """Определяет уровень предупреждения по использованию памяти"""
         if memory_mb >= cls.MEMORY_LIMITS["critical_threshold_mb"]:
