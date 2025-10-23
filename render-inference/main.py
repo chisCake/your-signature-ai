@@ -20,6 +20,7 @@ from dependencies import set_supabase_client, set_model_loader
 from routes.health import router as health_router
 from routes.forgery_by_id import router as forgery_by_id_router
 from routes.forgery_by_data import router as forgery_by_data_router
+from routes.model import router as model_router
 
 # Настройка логирования
 logging.basicConfig(
@@ -37,7 +38,12 @@ def check_environment_variables() -> Dict[str, str]:
     required_vars = {
         "SUPABASE_URL": os.getenv("SUPABASE_URL"),
         "SUPABASE_SERVICE_ROLE_KEY": os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
-        "MODEL_PATH": os.getenv("MODEL_PATH"),
+    }
+    
+    # Опциональные переменные
+    optional_vars = {
+        "MODEL_NAME": os.getenv("MODEL_NAME", "v1"),
+        "MODEL_PATH": os.getenv("MODEL_PATH"),  # Для обратной совместимости
     }
 
     missing_vars = [var for var, value in required_vars.items() if not value]
@@ -48,7 +54,11 @@ def check_environment_variables() -> Dict[str, str]:
         )
 
     logger.info("All required environment variables are set")
-    return required_vars
+    logger.info(f"Using model: {optional_vars['MODEL_NAME']}")
+    
+    # Объединяем обязательные и опциональные переменные
+    all_vars = {**required_vars, **optional_vars}
+    return all_vars
 
 
 def initialize_supabase_client() -> SupabaseClient:
@@ -66,12 +76,21 @@ def initialize_supabase_client() -> SupabaseClient:
 
 
 def initialize_model() -> ModelLoader:
-    """Инициализация модели с автоматической конфигурацией"""
+    """Инициализация модели с немедленной загрузкой"""
     try:
+        # Получаем путь к модели из переменной окружения или используем конфигурацию
         model_path = os.getenv("MODEL_PATH")
-        # Используем автоматическую конфигурацию ленивой загрузки
-        loader = ModelLoader(model_path, lazy_load=None)
-        logger.info(f"Model loader initialized for {model_path}")
+        model_name = os.getenv("MODEL_NAME", "v1")
+        
+        # Модель загружается сразу при создании ModelLoader
+        # Если MODEL_PATH не задан, ModelLoader использует путь из конфигурации
+        loader = ModelLoader(model_path)
+        
+        if model_path:
+            logger.info(f"Model loader initialized and model loaded for {model_path}")
+        else:
+            logger.info(f"Model loader initialized using MODEL_NAME={model_name}")
+        
         return loader
     except Exception as e:
         logger.error(f"Failed to initialize model: {e}")
@@ -148,6 +167,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(forgery_by_id_router)
 app.include_router(forgery_by_data_router)
+app.include_router(model_router)
 
 
 if __name__ == "__main__":

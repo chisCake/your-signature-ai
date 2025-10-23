@@ -23,16 +23,23 @@ async def health_check(
 ):
     """Проверка состояния сервера"""
     try:
-        status = {
-            "status": "healthy",
-            "supabase_connected": supabase_client is not None,
-            "model_loaded": model_loader is not None and model_loader.is_model_loaded,
-            "timestamp": None  # Можно добавить текущее время
-        }
+        # Получаем информацию о памяти (как в /memory)
+        memory_info = model_loader.get_memory_info()
+        model_info = model_loader.get_model_info()
         
-        # Проверка доступности модели
-        if model_loader and model_loader.is_loaded():
-            status["model_info"] = model_loader.get_model_info()
+        # Извлекаем название файла модели без расширения
+        import os
+        model_name = os.path.splitext(os.path.basename(model_loader.model_path))[0]
+        
+        status = {
+            "ok": True,
+            "supabase": supabase_client is not None,
+            "memory_mb": memory_info.get("rss_mb", 0),
+            "model": {
+                "name": model_name,
+                "device": model_info.get("device", "unknown")
+            }
+        }
         
         return JSONResponse(content=status)
         
@@ -63,37 +70,6 @@ async def memory_status(
         raise HTTPException(status_code=500, detail=f"Memory status check failed: {str(e)}")
 
 
-@router.post("/model/unload")
-async def unload_model(
-    model_loader: ModelLoader = Depends(get_model_loader)
-):
-    """Выгрузка модели из памяти"""
-    try:
-        model_loader.unload_model()
-        return JSONResponse(content={"message": "Model unloaded successfully"})
-        
-    except Exception as e:
-        logger.error(f"Model unload failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Model unload failed: {str(e)}")
-
-
-@router.post("/model/load")
-async def load_model(
-    model_loader: ModelLoader = Depends(get_model_loader)
-):
-    """Принудительная загрузка модели в память"""
-    try:
-        if not model_loader.is_loaded():
-            model_loader.load_model()
-            return JSONResponse(content={"message": "Model loaded successfully"})
-        else:
-            return JSONResponse(content={"message": "Model already loaded"})
-        
-    except Exception as e:
-        logger.error(f"Model load failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Model load failed: {str(e)}")
-
-
 @router.get("/")
 async def root():
     """Корневой endpoint"""
@@ -103,8 +79,6 @@ async def root():
         "endpoints": {
             "health": "/health",
             "memory": "/memory",
-            "model_unload": "/model/unload",
-            "model_load": "/model/load",
             "forgery_by_id": "/forgery-by-id",
             "forgery_by_data": "/forgery-by-data",
             "docs": "/docs"
