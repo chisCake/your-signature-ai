@@ -3,7 +3,7 @@
 import { useUser } from '@/lib/hooks/use-user';
 import Link from 'next/link';
 
-const LINK_CLASSES = 'px-3 py-2 sm:w-full rounded-md hover:bg-accent hover:text-accent-foreground transition-colors';
+const LINK_CLASSES = 'px-3 py-2 w-full lg:w-auto rounded-md hover:bg-accent hover:text-accent-foreground transition-colors';
 
 export function ActionPageList() {
   const { isMod, isAdmin } = useUser();

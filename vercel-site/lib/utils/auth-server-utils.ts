@@ -5,8 +5,13 @@ import { SignatureGenuine, Profile } from '@/lib/types';
 
 export async function getUser() {
   const supabase = await createServerClient();
-  const { data } = await supabase.auth.getClaims();
-  // console.log("getUser (server):", data?.claims);
+  const { data, error } = await supabase.auth.getClaims();
+  
+  if (error) {
+    console.warn('[getUser] Error getting user claims:', error);
+    return null;
+  }
+  
   return data?.claims;
 }
 
@@ -29,17 +34,21 @@ export async function getUserProfile(): Promise<Profile | null> {
     
     return profile;
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.warn('[getUserProfile] Error getting user profile:', error);
     return null;
   }
 }
 
 export async function isMod(user: unknown = null) {
-  return hasRole(user || (await getUser()), 'mod');
+  const userToCheck = user || (await getUser());
+  const result = hasRole(userToCheck, 'mod');
+  return result;
 }
 
 export async function isAdmin(user: unknown = null) {
-  return hasRole(user || (await getUser()), 'admin');
+  const userToCheck = user || (await getUser());
+  const result = hasRole(userToCheck, 'admin');
+  return result;
 }
 
 export async function canEditSignature(
@@ -49,7 +58,7 @@ export async function canEditSignature(
   let targetSignature = signature;
 
   if (!signatureId && !signature) {
-    console.error('Neither signatureId nor signature provided');
+    console.warn('[canEditSignature] Neither signatureId nor signature provided');
     return false;
   }
 
@@ -59,39 +68,47 @@ export async function canEditSignature(
   // else signature is already provided
 
   if (!targetSignature) {
-    console.error(`Signature not found ${signatureId}`);
+    console.warn('[canEditSignature] Signature not found for ID:', signatureId);
     return false;
   }
 
-  if (!targetSignature.user_id) {
-    console.error(`Signature has no user_id ${signatureId}`);
-    return false;
+  if (targetSignature.pseudouser_id) {
+    return true;
   }
 
   const user = await getUser();
 
   // For owner
-  if (user?.sub === targetSignature.user_id) return true;
+  if (user?.sub === targetSignature.user_id) {
+    return true;
+  }
 
+  if (!targetSignature.user_id) {
+    console.warn('[canEditSignature] targetSignature.user_id is undefined');
+    return false;
+  }
   const targetUser = await getProfile(targetSignature.user_id);
   const targetUserRole = targetUser?.role;
 
   // For admin
   if (await isAdmin(user)) {
-    if (user?.sub === targetSignature.user_id) return true;
+    if (user?.sub === targetSignature.user_id) {
+      return true;
+    }
 
-    if (targetUserRole === 'admin') return false;
+    if (targetUserRole === 'admin') {
+      return false;
+    }
     return true;
   }
 
   // For mod
   if (await isMod(user)) {
-    if (targetUserRole === 'mod' || targetUserRole === 'admin') return false;
+    if (targetUserRole === 'mod' || targetUserRole === 'admin') {
+      return false;
+    }
     return true;
   }
 
-  console.warn(
-    `Unpredicted situation: user ${user?.sub} cannot edit signature ${signatureId}`
-  );
   return false;
 }
