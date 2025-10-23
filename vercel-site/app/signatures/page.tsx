@@ -14,6 +14,7 @@ import { toast } from '@/components/ui/toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { DateFilter, DateFilterValue } from '@/components/ui/date-filter';
 import {
   ChevronFirst,
   ChevronLast,
@@ -49,6 +50,9 @@ export default function SignaturesPage() {
   const [searchId, setSearchId] = useState<string>('');
   const [isSearchMode, setIsSearchMode] = useState<boolean>(false);
 
+  // Date filter
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({ type: 'all' });
+
   // Data
   const [signatures, setSignatures] = useState<Signature[]>([]);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -61,18 +65,21 @@ export default function SignaturesPage() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Обычная загрузка с пагинацией
+      // Обычная загрузка с пагинацией и фильтром по дате
       const [count, list] = await (async () => {
+        const dateFrom = dateFilter.type !== 'all' ? dateFilter.from : undefined;
+        const dateTo = dateFilter.type !== 'all' ? dateFilter.to : undefined;
+
         if (category === 'genuine') {
           const [cnt, lst] = await Promise.all([
-            getGenuineSignaturesAmount(client),
-            getGenuineSignatures(client, perPage, (page - 1) * perPage),
+            getGenuineSignaturesAmount(client, dateFrom, dateTo),
+            getGenuineSignatures(client, perPage, (page - 1) * perPage, dateFrom, dateTo),
           ]);
           return [cnt, lst];
         } else {
           const [cnt, lst] = await Promise.all([
-            getForgedSignaturesAmount(client),
-            getForgedSignatures(client, perPage, (page - 1) * perPage),
+            getForgedSignaturesAmount(client, dateFrom, dateTo),
+            getForgedSignatures(client, perPage, (page - 1) * perPage, dateFrom, dateTo),
           ]);
           return [cnt, lst];
         }
@@ -85,7 +92,7 @@ export default function SignaturesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [category, perPage, page, client]);
+  }, [category, perPage, page, dateFilter, client]);
 
   const performSearch = useCallback(async (searchQuery: string) => {
     setIsLoading(true);
@@ -154,6 +161,13 @@ export default function SignaturesPage() {
     setSearchId(value);
   }, []);
 
+  const handleDateFilterChange = useCallback((value: DateFilterValue) => {
+    setDateFilter(value);
+    setPage(1); // reset page when filter changes
+    setIsSearchMode(false); // exit search mode when filter changes
+    setSearchId('');
+  }, []);
+
   const pageNumbers = useMemo(
     () => getPageNumbers(page, totalPages, 5),
     [page, totalPages]
@@ -208,47 +222,56 @@ export default function SignaturesPage() {
 
         {/* Filters and pagination controls */}
         <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
-          <div className='flex flex-row gap-2'>
-            {/* Category selector */}
-            <div className='flex items-center gap-2'>
-              <Filter className='h-4 w-4 text-muted-foreground' />
-              <Button
-                variant={category === 'genuine' ? 'default' : 'outline'}
-                size='sm'
-                onClick={() => handleCategoryChange('genuine')}
-                className='flex items-center gap-1'
-                disabled={isSearchMode}
-              >
-                Настоящие
-              </Button>
-              <Button
-                variant={category === 'forged' ? 'default' : 'outline'}
-                size='sm'
-                onClick={() => handleCategoryChange('forged')}
-                className='flex items-center gap-1'
-                disabled={isSearchMode}
-              >
-                Поддельные
-              </Button>
-            </div>
-
-            {/* Per page selector */}
-            {!isSearchMode && (
+          <div className='flex flex-col gap-4'>
+            {/* Date filter */}
+            <DateFilter
+              value={dateFilter}
+              onChange={handleDateFilterChange}
+              disabled={isSearchMode}
+            />
+            
+            <div className='flex flex-row gap-2'>
+              {/* Category selector */}
               <div className='flex items-center gap-2'>
-                <span className='text-sm text-muted-foreground'>
-                  Показывать по
-                </span>
-                <select
-                  value={perPage}
-                  onChange={e => handlePerPageChange(e.target.value)}
-                  className='border border-input bg-background rounded px-2 py-1 text-sm focus:outline-none'
+                <Filter className='h-4 w-4 text-muted-foreground' />
+                <Button
+                  variant={category === 'genuine' ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => handleCategoryChange('genuine')}
+                  className='flex items-center gap-1'
+                  disabled={isSearchMode}
                 >
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                  <option value={200}>200</option>
-                </select>
+                  Настоящие
+                </Button>
+                <Button
+                  variant={category === 'forged' ? 'default' : 'outline'}
+                  size='sm'
+                  onClick={() => handleCategoryChange('forged')}
+                  className='flex items-center gap-1'
+                  disabled={isSearchMode}
+                >
+                  Поддельные
+                </Button>
               </div>
-            )}
+
+              {/* Per page selector */}
+              {!isSearchMode && (
+                <div className='flex items-center gap-2'>
+                  <span className='text-sm text-muted-foreground'>
+                    Показывать по
+                  </span>
+                  <select
+                    value={perPage}
+                    onChange={e => handlePerPageChange(e.target.value)}
+                    className='border border-input bg-background rounded px-2 py-1 text-sm focus:outline-none'
+                  >
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className='flex flex-row gap-2'>

@@ -195,13 +195,22 @@ export async function getUserForgedSignatures(
 }
 
 export async function getGenuineSignaturesAmount(
-  supabase?: SupabaseClient
+  supabase?: SupabaseClient,
+  dateFrom?: Date,
+  dateTo?: Date
 ): Promise<number> {
   const client = getClient(supabase);
 
-  const query = client
+  let query = client
     .from('genuine_signatures')
     .select('id', { count: 'exact', head: true });
+
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom.toISOString());
+  }
+  if (dateTo) {
+    query = query.lte('created_at', dateTo.toISOString());
+  }
 
   const { count, error } = await query;
 
@@ -214,13 +223,22 @@ export async function getGenuineSignaturesAmount(
 }
 
 export async function getForgedSignaturesAmount(
-  supabase?: SupabaseClient
+  supabase?: SupabaseClient,
+  dateFrom?: Date,
+  dateTo?: Date
 ): Promise<number> {
   const client = getClient(supabase);
 
-  const query = client
+  let query = client
     .from('forged_signatures')
     .select('id', { count: 'exact', head: true });
+
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom.toISOString());
+  }
+  if (dateTo) {
+    query = query.lte('created_at', dateTo.toISOString());
+  }
 
   const { count, error } = await query;
 
@@ -236,13 +254,25 @@ export async function getForgedSignaturesAmount(
 export async function getGenuineSignatures(
   supabase?: SupabaseClient,
   limit: number = 100,
-  offset: number = 0
+  offset: number = 0,
+  dateFrom?: Date,
+  dateTo?: Date
 ): Promise<SignatureGenuine[]> {
   const client = getClient(supabase);
-  const { data, error } = await client
+  
+  let query = client
     .from('genuine_signatures')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom.toISOString());
+  }
+  if (dateTo) {
+    query = query.lte('created_at', dateTo.toISOString());
+  }
+
+  const { data, error } = await query
     .limit(limit)
     .range(offset, offset + limit - 1);
 
@@ -256,13 +286,25 @@ export async function getGenuineSignatures(
 export async function getForgedSignatures(
   supabase?: SupabaseClient,
   limit: number = 100,
-  offset: number = 0
+  offset: number = 0,
+  dateFrom?: Date,
+  dateTo?: Date
 ): Promise<SignatureForged[]> {
   const client = getClient(supabase);
-  const { data, error } = await client
+  
+  let query = client
     .from('forged_signatures')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom.toISOString());
+  }
+  if (dateTo) {
+    query = query.lte('created_at', dateTo.toISOString());
+  }
+
+  const { data, error } = await query
     .limit(limit)
     .range(offset, offset + limit - 1);
 

@@ -166,4 +166,78 @@
       min-width: auto;
     }
   }
+
+  /* DayPicker стили для адаптации к теме */
+  .rdp-root {
+    --rdp-accent-color: hsl(var(--primary)) !important;
+    --rdp-accent-background-color: hsl(var(--primary) / 0.1) !important;
+    --rdp-day-height: 36px;
+    --rdp-day-width: 36px;
+    --rdp-day-button-height: 36px;
+    --rdp-day-button-width: 36px;
+    --rdp-day-button-border-radius: 6px;
+    --rdp-today-color: hsl(var(--accent-foreground));
+    --rdp-outside-opacity: 0.5;
+    --rdp-disabled-opacity: 0.5;
+    /* Выбранные дни - черный фон с белым текстом для светлой темы */
+    --rdp-selected-background: #000000;
+    --rdp-selected-color: #ffffff;
+    --rdp-range-middle-background-color: hsl(var(--primary) / 0.2);
+    --rdp-range-middle-color: hsl(var(--primary-foreground));
+    --rdp-range-start-background: #000000;
+    --rdp-range-start-color: #ffffff;
+    --rdp-range-end-background: #000000;
+    --rdp-range-end-color: #ffffff;
+    --rdp-selected-border: 2px solid #000000;
+    --rdp-nav-button-height: 28px;
+    --rdp-nav-button-width: 28px;
+    --rdp-weekday-opacity: 0.7;
+    --rdp-weekday-padding: 0.5rem;
+    --rdp-weekday-text-align: center;
+  }
+
+  /* Темная тема для DayPicker */
+  .dark .rdp-root {
+    --rdp-accent-color: hsl(var(--primary));
+    --rdp-accent-background-color: hsl(var(--primary) / 0.1);
+    --rdp-today-color: hsl(var(--accent-foreground));
+    /* Выбранные дни - белый фон с черным текстом для темной темы */
+    --rdp-selected-background: #ffffff;
+    --rdp-selected-color: #000000;
+    --rdp-range-middle-background-color: hsl(var(--primary) / 0.2);
+    --rdp-range-middle-color: hsl(var(--primary-foreground));
+    --rdp-range-start-background: #ffffff;
+    --rdp-range-start-color: #000000;
+    --rdp-range-end-background: #ffffff;
+    --rdp-range-end-color: #000000;
+    --rdp-selected-border: 2px solid #ffffff;
+  }
+
+  /* Стили для диапазона выбора */
+  .rdp-root .rdp-range_start .rdp-day_button,
+  .rdp-root .rdp-range_end .rdp-day_button {
+    background-color: #000000 !important;
+    border: 2px solid #000000 !important;
+    color: #ffffff !important;
+  }
+
+  .rdp-root .rdp-range_middle .rdp-day_button {
+    background-color: rgba(0, 0, 0, 0) !important;
+    color: #000000 !important;
+  }
+
+  .dark .rdp-root .rdp-range_start .rdp-day_button {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .dark .rdp-root .rdp-range_end .rdp-day_button {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .dark .rdp-root .rdp-range_middle .rdp-day_button {
+    /* background-color: rgba(255, 255, 255, 0.2) !important; */
+    color: #ffffff !important;
+  }
 }
