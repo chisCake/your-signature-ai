@@ -55,6 +55,12 @@ export default function CreateSignatureSection({
     const signatureData = canvasRef.current.getSignatureData();
     const inputType = canvasRef.current.getInputType();
 
+    if (!signatureData || signatureData.length === 0) {
+      toast({ description: 'Нельзя сохранить пустую подпись' });
+      setSaving(false);
+      return;
+    }
+
     try {
       const saveFn =
         saveSignatureProp ??
