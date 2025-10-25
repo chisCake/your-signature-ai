@@ -1,4 +1,6 @@
 export type UserRole = 'user' | 'mod' | 'admin';
+export type UserType = 'user' | 'pseudouser';
+export type SignatureType = 'genuine' | 'forged';
 
 // Типы для векторных данных подписи
 export interface SignaturePoint {
@@ -23,17 +25,32 @@ export interface SignaturePoint {
 // БАЗОВЫЕ ТИПЫ ДЛЯ ТАБЛИЦ БД
 // ========================================
 
-// Таблица profiles
+/**
+ * Таблица profiles
+ * @type { string } id - id пользователя
+ * @type { UserRole } role - роль пользователя
+ * @type { string } display_name - отображаемое имя пользователя
+ * @type { string } created_at - дата создания пользователя
+ * @type { string } updated_at - дата последнего обновления пользователя
+ * @type { string | null } email - email пользователя из auth.users
+ */
 export interface Profile {
   id: string;
   role: UserRole;
   display_name: string;
   created_at: string;
   updated_at: string;
-  email: string | null; // email пользователя из auth.users
+  email: string | null;
 }
 
-// Таблица pseudousers
+/**
+ * Таблица pseudousers
+ * @type { string } id - id псевдопользователя
+ * @type { string } name - имя псевдопользователя
+ * @type { string } source - источник псевдопользователя
+ * @type { string } created_at - дата создания псевдопользователя
+ * @type { string } updated_at - дата последнего обновления псевдопользователя
+ */
 export interface Pseudouser {
   id: string;
   name: string;
@@ -42,14 +59,14 @@ export interface Pseudouser {
   updated_at: string;
 }
 
-// Объединенный тип для пользователей
+/**
+ * Объединенный тип для пользователей
+ * @type { 'user' | 'pseudouser' } type - тип пользователя
+ * @type { Profile | Pseudouser } data - данные пользователя
+ */
 export type User =
   | { type: 'user'; data: Profile }
   | { type: 'pseudouser'; data: Pseudouser };
-
-// Вспомогательные типы для определения типа пользователя
-export type UserType = 'user' | 'pseudouser';
-export type SignatureType = 'genuine' | 'forged';
 
 // Таблица models
 export interface Model {
@@ -64,7 +81,20 @@ export interface Model {
   updated_at: string;
 }
 
-// Таблица genuine_signatures
+/**
+ * Таблица genuine_signatures
+ * @type { string } id - id подписи
+ * @type { string | null } user_id - id пользователя
+ * @type { string | null } pseudouser_id - id псевдопользователя
+ * @type { string } features_table - название таблицы признаков
+ * @type { 'mouse' | 'touch' | 'pen' | undefined } input_type - тип ввода
+ * @type { boolean } user_for_forgery - флаг пользователя для использования в качестве образца для подделки
+ * @type { boolean } mod_for_forgery - флаг модератора для использования в качестве образца для подделки
+ * @type { boolean } mod_for_dataset - флаг модератора для использования в датасете обучения
+ * @type { string | null } name - имя подписи
+ * @type { string } created_at - дата создания подписи
+ * @type { string } updated_at - дата последнего обновления подписи
+ */
 export interface SignatureGenuine {
   id: string;
   user_id?: string;
@@ -134,23 +164,6 @@ export interface AdminToken {
 }
 
 // ========================================
-// СТАРЫЕ ТИПЫ (для обратной совместимости)
-// ========================================
-
-// Устаревший интерфейс Signature - используйте SignatureGenuine или SignatureForged
-export interface SignatureLegacy {
-  id: string;
-  user_id?: string;
-  csv_header: string; // первая строка CSV, например: "t,x,y,p"
-  csv_rows: string; // строки данных CSV без заголовка
-  user_for_forgery?: boolean;
-  mod_for_forgery?: boolean;
-  mod_for_dataset?: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-// ========================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ТИПОВ
 // ========================================
 
@@ -169,7 +182,7 @@ export function isPseudouser(
 export function isSignatureGenuine(
   signature: Signature
 ): signature is SignatureGenuine {
-  return 'user_id' in signature || 'pseudouser_id' in signature;
+  return !isSignatureForged(signature);
 }
 
 export function isSignatureForged(
@@ -202,6 +215,12 @@ export function getUserName(user: User): string {
 
 export function getUserId(user: User): string {
   return user.data.id;
+}
+
+export function getSignatureOwnerId(signature: Signature): string | null {
+  return isSignatureGenuine(signature)
+    ? (signature.user_id ?? null)
+    : (signature.forger_id ?? null);
 }
 
 // Подпись принадлежит настоящему пользователю или псевдопользователю

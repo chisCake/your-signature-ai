@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
 import { SignatureList } from '@/components/signature/signature-list';
-import { Signature } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DateFilter, DateFilterValue } from '@/components/ui/date-filter';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/components/ui/toast';
+import { createBrowserClient } from '@/lib/supabase/client';
 import {
-  getGenuineSignatures,
   getForgedSignatures,
-  getGenuineSignaturesAmount,
   getForgedSignaturesAmount,
+  getGenuineSignatures,
+  getGenuineSignaturesAmount,
   searchSignature,
 } from '@/lib/supabase/queries';
-import { toast } from '@/components/ui/toast';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { DateFilter, DateFilterValue } from '@/components/ui/date-filter';
+import { Signature } from '@/lib/types';
 import {
   ChevronFirst,
   ChevronLast,
@@ -22,9 +22,8 @@ import {
   ChevronRight,
   Filter,
   Search,
-  X,
 } from 'lucide-react';
-import { createBrowserClient } from '@/lib/supabase/client';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 // Helper to build list of page numbers to render (max 5 items)
 function getPageNumbers(current: number, total: number, max = 5): number[] {
@@ -51,7 +50,17 @@ export default function SignaturesPage() {
   const [isSearchMode, setIsSearchMode] = useState<boolean>(false);
 
   // Date filter
-  const [dateFilter, setDateFilter] = useState<DateFilterValue>({ type: 'all' });
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>({
+    type: 'all',
+  });
+  const [appliedDateFilter, setAppliedDateFilter] = useState<DateFilterValue>({
+    type: 'all',
+  });
+
+  // Category filter
+  const [appliedCategory, setAppliedCategory] = useState<'genuine' | 'forged'>(
+    'genuine'
+  );
 
   // Data
   const [signatures, setSignatures] = useState<Signature[]>([]);
@@ -62,100 +71,208 @@ export default function SignaturesPage() {
 
   const client = createBrowserClient();
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      // Обычная загрузка с пагинацией и фильтром по дате
-      const [count, list] = await (async () => {
-        const dateFrom = dateFilter.type !== 'all' ? dateFilter.from : undefined;
-        const dateTo = dateFilter.type !== 'all' ? dateFilter.to : undefined;
+  const loadDataWithFilters = useCallback(
+    async (
+      categoryFilter: 'genuine' | 'forged',
+      dateFilter: DateFilterValue,
+      currentPage: number = page,
+      itemsPerPage: number = perPage
+    ) => {
+      setIsLoading(true);
+      try {
+        const [count, list] = await (async () => {
+          let dateFrom =
+            dateFilter.type !== 'all' ? dateFilter.from : undefined;
+          let dateTo = dateFilter.type !== 'all' ? dateFilter.to : undefined;
 
-        if (category === 'genuine') {
-          const [cnt, lst] = await Promise.all([
-            getGenuineSignaturesAmount(client, dateFrom, dateTo),
-            getGenuineSignatures(client, perPage, (page - 1) * perPage, dateFrom, dateTo),
-          ]);
-          return [cnt, lst];
-        } else {
-          const [cnt, lst] = await Promise.all([
-            getForgedSignaturesAmount(client, dateFrom, dateTo),
-            getForgedSignatures(client, perPage, (page - 1) * perPage, dateFrom, dateTo),
-          ]);
-          return [cnt, lst];
-        }
-      })();
-      setTotalCount(count);
-      setSignatures(list);
-    } catch (e) {
-      console.error(e);
-      toast({ description: 'Ошибка загрузки подписей', type: 'foreground' });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [category, perPage, page, dateFilter, client]);
+          if (dateFrom && dateTo) {
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+            if (
+              dateFrom.toLocaleDateString() ===
+                yesterday.toLocaleDateString() &&
+              dateTo.toLocaleDateString() === today.toLocaleDateString()
+            ) {
+              dateFrom = yesterday;
+              dateTo = today;
+            }
+          }
 
-  const performSearch = useCallback(async (searchQuery: string) => {
-    setIsLoading(true);
-    try {
-      if (searchQuery.trim()) {
-        const signature = await searchSignature(searchQuery, client);
-        if (!signature) {
-          toast({
-            description: 'Подписи с указанным ID не найдены',
-            type: 'foreground',
-          });
-          return;
-        }
-        setSignatures([signature]);
-        setTotalCount(1);
+          if (categoryFilter === 'genuine') {
+            const [cnt, lst] = await Promise.all([
+              getGenuineSignaturesAmount(client, dateFrom, dateTo),
+              getGenuineSignatures(
+                client,
+                itemsPerPage,
+                (currentPage - 1) * itemsPerPage,
+                dateFrom,
+                dateTo
+              ),
+            ]);
+            return [cnt, lst];
+          } else {
+            const [cnt, lst] = await Promise.all([
+              getForgedSignaturesAmount(client, dateFrom, dateTo),
+              getForgedSignatures(
+                client,
+                itemsPerPage,
+                (currentPage - 1) * itemsPerPage,
+                dateFrom,
+                dateTo
+              ),
+            ]);
+            return [cnt, lst];
+          }
+        })();
+        setTotalCount(count);
+        setSignatures(list);
+      } catch (e) {
+        console.error(e);
+        toast({ description: 'Ошибка загрузки подписей', type: 'foreground' });
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.error(e);
-      toast({ description: 'Ошибка поиска подписей', type: 'foreground' });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [client]);
+    },
+    [client, page, perPage]
+  );
 
+  const performSearch = useCallback(
+    async (searchQuery: string) => {
+      setIsLoading(true);
+      try {
+        if (searchQuery.trim()) {
+          const signature = await searchSignature(searchQuery, client);
+          if (!signature) {
+            toast({
+              description: 'Подписи с указанным ID не найдены',
+              type: 'foreground',
+            });
+            return;
+          }
+          setSignatures([signature]);
+          setTotalCount(1);
+          setIsSearchMode(true);
+        }
+      } catch (e) {
+        console.error(e);
+        toast({ description: 'Ошибка поиска подписей', type: 'foreground' });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  // Загружаем данные только при первой загрузке страницы
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const loadInitialData = async () => {
+      await loadDataWithFilters('genuine', { type: 'all' }, 1, 50);
+    };
+    loadInitialData();
+  }, [loadDataWithFilters]); // Добавляем зависимость
+
+  // Обработчик события signatureDeleted
+  useEffect(() => {
+    const handleSignatureDeleted = (event: CustomEvent) => {
+      const { id: deletedId, type: deletedType } = event.detail;
+
+      // Проверяем, что удаленная подпись соответствует текущей категории
+      const currentType = appliedCategory === 'genuine' ? 'genuine' : 'forged';
+      if (deletedType !== currentType) {
+        return; // Не обновляем состояние, если удаленная подпись не относится к текущей категории
+      }
+
+      // Удаляем подпись из локального состояния
+      setSignatures(prevSignatures =>
+        prevSignatures.filter(signature => signature.id !== deletedId)
+      );
+
+      // Обновляем общее количество
+      setTotalCount(prevCount => Math.max(0, prevCount - 1));
+
+      // Подпись успешно удалена из локального состояния
+    };
+
+    // Добавляем слушатель события
+    window.addEventListener(
+      'signatureDeleted',
+      handleSignatureDeleted as EventListener
+    );
+
+    // Очищаем слушатель при размонтировании компонента
+    return () => {
+      window.removeEventListener(
+        'signatureDeleted',
+        handleSignatureDeleted as EventListener
+      );
+    };
+  }, [appliedCategory]); // Зависимость от appliedCategory для проверки типа
 
   // Handlers
   const handleCategoryChange = useCallback((cat: 'genuine' | 'forged') => {
     setCategory(cat);
-    setPage(1); // reset page
-    setIsSearchMode(false); // exit search mode
-    setSearchId('');
   }, []);
 
-  const handlePerPageChange = useCallback((value: string | number) => {
-    setPerPage(Number(value));
-    setPage(1);
-  }, []);
+  const handlePerPageChange = useCallback(
+    (value: string | number) => {
+      const newPerPage = Number(value);
+      setPerPage(newPerPage);
+      setPage(1);
+      // Загружаем данные с новым количеством элементов на странице
+      loadDataWithFilters(appliedCategory, appliedDateFilter, 1, newPerPage);
+    },
+    [loadDataWithFilters, appliedCategory, appliedDateFilter]
+  );
 
   const navigatePage = useCallback(
     (newPage: number) => {
       if (newPage < 1 || newPage > totalPages) return;
       setPage(newPage);
+      // Загружаем данные для новой страницы
+      loadDataWithFilters(appliedCategory, appliedDateFilter, newPage, perPage);
     },
-    [totalPages]
+    [
+      totalPages,
+      loadDataWithFilters,
+      appliedCategory,
+      appliedDateFilter,
+      perPage,
+    ]
   );
 
-  const handleSearch = useCallback(() => {
-    if (searchId.trim()) {
-      setIsSearchMode(true);
-      setPage(1);
-      performSearch(searchId);
-    }
-  }, [searchId, performSearch]);
-
-  const handleClearSearch = useCallback(() => {
-    setIsSearchMode(false);
-    setSearchId('');
+  const applyFilters = useCallback(() => {
+    setAppliedDateFilter(dateFilter);
+    setAppliedCategory(category);
     setPage(1);
-    loadData();
-  }, [loadData]);
+
+    if (searchId.trim()) {
+      performSearch(searchId);
+    } else {
+      setIsSearchMode(false);
+      // Загружаем данные с новыми примененными фильтрами
+      loadDataWithFilters(category, dateFilter, 1, perPage);
+    }
+  }, [
+    searchId,
+    dateFilter,
+    category,
+    performSearch,
+    loadDataWithFilters,
+    perPage,
+  ]);
+
+  const resetFilters = useCallback(() => {
+    setSearchId('');
+    setDateFilter({ type: 'all' });
+    setAppliedDateFilter({ type: 'all' });
+    setCategory('genuine');
+    setAppliedCategory('genuine');
+    setIsSearchMode(false);
+    setPage(1);
+    // Загружаем данные с сброшенными фильтрами
+    loadDataWithFilters('genuine', { type: 'all' }, 1, perPage);
+  }, [loadDataWithFilters, perPage]);
 
   const handleSearchIdChange = useCallback((value: string) => {
     setSearchId(value);
@@ -163,9 +280,6 @@ export default function SignaturesPage() {
 
   const handleDateFilterChange = useCallback((value: DateFilterValue) => {
     setDateFilter(value);
-    setPage(1); // reset page when filter changes
-    setIsSearchMode(false); // exit search mode when filter changes
-    setSearchId('');
   }, []);
 
   const pageNumbers = useMemo(
@@ -176,10 +290,10 @@ export default function SignaturesPage() {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
-        handleSearch();
+        applyFilters();
       }
     },
-    [handleSearch]
+    [applyFilters]
   );
 
   return (
@@ -187,49 +301,26 @@ export default function SignaturesPage() {
       {/* Filter panel */}
       <div className='flex flex-col gap-4 border rounded-lg p-4 bg-muted/20'>
         {/* Search by ID */}
-        <div className='flex flex-col sm:flex-row gap-2'>
-          <div className='flex items-center gap-2 flex-1'>
-            <Search className='h-4 w-4 text-muted-foreground' />
-            <Input
-              placeholder='Поиск по части ID подписи...'
-              value={searchId}
-              onChange={e => handleSearchIdChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className='flex-1'
-            />
-            <Button
-              onClick={handleSearch}
-              disabled={!searchId.trim()}
-              size='sm'
-              className='flex items-center gap-1'
-            >
-              <Search className='h-4 w-4' />
-              Найти
-            </Button>
-            {isSearchMode && (
-              <Button
-                onClick={handleClearSearch}
-                variant='outline'
-                size='sm'
-                className='flex items-center gap-1'
-              >
-                <X className='h-4 w-4' />
-                Очистить
-              </Button>
-            )}
+        <div className='space-y-2'>
+          <div className='flex items-center gap-2 text-sm font-medium text-muted-foreground'>
+            <Search className='h-4 w-4' />
+            Поиск по ID
           </div>
+          <Input
+            placeholder='Введите ID подписи...'
+            value={searchId}
+            onChange={e => handleSearchIdChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className='flex-1'
+          />
         </div>
 
         {/* Filters and pagination controls */}
         <div className='flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
           <div className='flex flex-col gap-4'>
             {/* Date filter */}
-            <DateFilter
-              value={dateFilter}
-              onChange={handleDateFilterChange}
-              disabled={isSearchMode}
-            />
-            
+            <DateFilter value={dateFilter} onChange={handleDateFilterChange} />
+
             <div className='flex flex-row gap-2'>
               {/* Category selector */}
               <div className='flex items-center gap-2'>
@@ -239,7 +330,6 @@ export default function SignaturesPage() {
                   size='sm'
                   onClick={() => handleCategoryChange('genuine')}
                   className='flex items-center gap-1'
-                  disabled={isSearchMode}
                 >
                   Настоящие
                 </Button>
@@ -248,29 +338,46 @@ export default function SignaturesPage() {
                   size='sm'
                   onClick={() => handleCategoryChange('forged')}
                   className='flex items-center gap-1'
-                  disabled={isSearchMode}
                 >
                   Поддельные
                 </Button>
               </div>
 
               {/* Per page selector */}
-              {!isSearchMode && (
-                <div className='flex items-center gap-2'>
-                  <span className='text-sm text-muted-foreground'>
-                    Показывать по
-                  </span>
-                  <select
-                    value={perPage}
-                    onChange={e => handlePerPageChange(e.target.value)}
-                    className='border border-input bg-background rounded px-2 py-1 text-sm focus:outline-none'
-                  >
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={200}>200</option>
-                  </select>
-                </div>
-              )}
+              <div className='flex items-center gap-2'>
+                <span className='text-sm text-muted-foreground'>
+                  Показывать по
+                </span>
+                <select
+                  value={perPage}
+                  onChange={e => handlePerPageChange(e.target.value)}
+                  className='border border-input bg-background rounded px-2 py-1 text-sm focus:outline-none'
+                >
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={200}>200</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Apply/Reset buttons */}
+            <div className='flex gap-2'>
+              <Button
+                variant='default'
+                size='sm'
+                onClick={applyFilters}
+                className='px-8'
+              >
+                Найти
+              </Button>
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={resetFilters}
+                className='px-8'
+              >
+                Сбросить
+              </Button>
             </div>
           </div>
 
@@ -292,7 +399,7 @@ export default function SignaturesPage() {
       />
 
       {/* Pagination */}
-      {!isSearchMode && totalPages > 1 && (
+      {totalPages > 1 && (
         <div className='flex items-center justify-center gap-1 mt-4'>
           <Button
             variant='ghost'

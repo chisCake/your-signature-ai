@@ -1,37 +1,55 @@
+import { getProfile } from '@/lib/supabase/queries';
 import { createServerClient } from '@/lib/supabase/server';
+import { Profile } from '@/lib/types';
 import { hasRole } from '@/lib/utils/auth-utils';
-import { getProfile, getGenuineSignature } from '@/lib/supabase/queries';
-import { SignatureGenuine, Profile } from '@/lib/types';
+import { JwtPayload } from '@supabase/auth-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
-export async function getUser() {
-  const supabase = await createServerClient();
+/**
+ * Получает информацию о текущем авторизованном пользователе
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns Информация {@link JwtPayload} о пользователе или null, если пользователь не авторизован
+ */
+export async function getUser(
+  client?: SupabaseClient
+): Promise<JwtPayload | null> {
+  const supabase = client || (await createServerClient());
   const { data, error } = await supabase.auth.getClaims();
-  
+
   if (error) {
     console.warn('[getUser] Error getting user claims:', error);
     return null;
   }
-  
-  return data?.claims;
+
+  if (!data?.claims) {
+    return null;
+  }
+
+  return data.claims;
 }
 
-export async function getUserProfile(): Promise<Profile | null> {
+/**
+ * Получает профиль текущего авторизованного пользователя
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns Профиль {@link Profile} пользователя или null, если пользователь не авторизован
+ */
+export async function getUserProfile(
+  client?: SupabaseClient
+): Promise<Profile | null> {
   try {
-    const user = await getUser();
+    const user = await getUser(client);
     if (!user?.sub) {
       return null;
     }
 
-    const supabase = await createServerClient();
-    const profile = await getProfile(user.sub, supabase);
-    
+    const profile = await getProfile(user.sub, client);
+
     if (!profile) {
       return null;
     }
 
-    // Добавляем email из claims
     profile.email = user.email || null;
-    
+
     return profile;
   } catch (error) {
     console.warn('[getUserProfile] Error getting user profile:', error);
@@ -49,66 +67,4 @@ export async function isAdmin(user: unknown = null) {
   const userToCheck = user || (await getUser());
   const result = hasRole(userToCheck, 'admin');
   return result;
-}
-
-export async function canEditSignature(
-  signature: SignatureGenuine | null = null,
-  signatureId: string | null = null
-): Promise<boolean> {
-  let targetSignature = signature;
-
-  if (!signatureId && !signature) {
-    console.warn('[canEditSignature] Neither signatureId nor signature provided');
-    return false;
-  }
-
-  if (signatureId) {
-    targetSignature = await getGenuineSignature(signatureId);
-  }
-  // else signature is already provided
-
-  if (!targetSignature) {
-    console.warn('[canEditSignature] Signature not found for ID:', signatureId);
-    return false;
-  }
-
-  if (targetSignature.pseudouser_id) {
-    return true;
-  }
-
-  const user = await getUser();
-
-  // For owner
-  if (user?.sub === targetSignature.user_id) {
-    return true;
-  }
-
-  if (!targetSignature.user_id) {
-    console.warn('[canEditSignature] targetSignature.user_id is undefined');
-    return false;
-  }
-  const targetUser = await getProfile(targetSignature.user_id);
-  const targetUserRole = targetUser?.role;
-
-  // For admin
-  if (await isAdmin(user)) {
-    if (user?.sub === targetSignature.user_id) {
-      return true;
-    }
-
-    if (targetUserRole === 'admin') {
-      return false;
-    }
-    return true;
-  }
-
-  // For mod
-  if (await isMod(user)) {
-    if (targetUserRole === 'mod' || targetUserRole === 'admin') {
-      return false;
-    }
-    return true;
-  }
-
-  return false;
 }

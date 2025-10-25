@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import {
   searchUsersAndPseudousers,
   formatModSearchLabel,
-} from '@/lib/utils/mod-utils';
+} from '@/lib/utils/mod-client-utils';
 import { User } from '@/lib/types';
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/utils/client-utils';
 import { isMod } from '@/lib/utils/auth-client-utils';
 import { LoaderCircle } from 'lucide-react';
 

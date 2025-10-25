@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import {
-  SignatureGenuine,
-  SignatureForged,
-  isSignatureGenuine,
-} from '@/lib/types';
+import { PreviewField } from '@/components/signature/signature-list';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ToggleButton } from '@/components/ui/toggle-button';
-import { Badge } from '@/components/ui/badge';
-import { PreviewField } from '@/components/signature/signature-list';
+import {
+  SignatureForged,
+  SignatureGenuine,
+  isSignatureGenuine,
+} from '@/lib/types';
+import { getUser, isMod } from '@/lib/utils/auth-client-utils';
+import { BadgeFactory } from '@/lib/utils/badge-factory';
 import {
   deleteSignature,
   downloadSignatureAsPNG,
@@ -18,18 +19,18 @@ import {
   toggleModForForgery,
   toggleUserForForgery,
 } from '@/lib/utils/signature-utils';
-import Image from 'next/image';
-import { getUser, isMod } from '@/lib/utils/auth-client-utils';
 import {
+  Ban,
+  Database,
   Download,
   Eye,
   EyeOff,
   ShieldCheck,
   ShieldX,
-  Database,
-  Ban,
   X,
 } from 'lucide-react';
+import Image from 'next/image';
+import React, { useEffect, useState } from 'react';
 
 interface SignaturePreviewProps {
   signature: SignatureGenuine | SignatureForged;
@@ -61,6 +62,8 @@ export function SignaturePreview({
   const [isCurrentUserMod, setIsCurrentUserMod] = useState<boolean>(false);
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isProfileLoading, setIsProfileLoading] = useState<boolean>(true);
+
+  const signatureType = isSignatureGenuine(signature) ? 'genuine' : 'forged';
 
   useEffect(() => {
     const getCurentUserData = async () => {
@@ -177,7 +180,7 @@ export function SignaturePreview({
     });
   };
 
-  const renderBages = () => {
+  const renderBadges = () => {
     if (isProfileLoading) {
       return (
         <Badge variant='default' tooltip='Загрузка...'>
@@ -187,35 +190,14 @@ export function SignaturePreview({
     }
 
     const isGenuine = isSignatureGenuine(signature);
-    const authenticityBadge = isGenuine ? (
-      <Badge variant='default' tooltip='Подпись является настоящей'>
-        Настоящая
-      </Badge>
-    ) : (
-      <Badge variant='default' tooltip='Подпись является поддельной'>
-        Поддельная
-      </Badge>
-    );
+    const authenticityBadge = BadgeFactory.authenticity(signature);
 
     if (!isGenuine) {
       return authenticityBadge;
     }
 
-    const userForForgeryBadge = userForForgery ? (
-      <Badge
-        variant='green'
-        tooltip='Разрешено использование как примера для подделки'
-      >
-        Публичная
-      </Badge>
-    ) : (
-      <Badge
-        variant='yellow'
-        tooltip='Запрещено использование как примера для подделки'
-      >
-        Скрыта пользователем
-      </Badge>
-    );
+    const genuineSignature = signature as SignatureGenuine;
+    const userForForgeryBadge = BadgeFactory.userForForgery(genuineSignature);
 
     if (isCurrentUserMod) {
       const userId =
@@ -229,23 +211,9 @@ export function SignaturePreview({
         return (
           <>
             {authenticityBadge}
-
             {userForForgeryBadge}
-
-            {!modForForgery && (
-              <Badge
-                variant='red'
-                tooltip='Запрещено использование как примера для подделки модератором'
-              >
-                Скрыта модератором
-              </Badge>
-            )}
-
-            {!modForDataset && (
-              <Badge variant='red' tooltip='Подпись не участвует в датасете'>
-                Не в датасете
-              </Badge>
-            )}
+            {!modForForgery && BadgeFactory.modForForgery(genuineSignature)}
+            {!modForDataset && BadgeFactory.modForDataset(signature)}
           </>
         );
       }
@@ -253,7 +221,6 @@ export function SignaturePreview({
       return (
         <>
           {authenticityBadge}
-
           {userForForgery && modForForgery && (
             <Badge
               variant='green'
@@ -262,7 +229,6 @@ export function SignaturePreview({
               Публичная
             </Badge>
           )}
-
           {!userForForgery && (
             <Badge
               variant='yellow'
@@ -271,21 +237,8 @@ export function SignaturePreview({
               Скрыта пользователем
             </Badge>
           )}
-
-          {!modForForgery && (
-            <Badge
-              variant='red'
-              tooltip='Запрещено использование как примера для подделки модератором'
-            >
-              Скрыта модератором
-            </Badge>
-          )}
-
-          {!modForDataset && (
-            <Badge variant='red' tooltip='Подпись не участвует в датасете'>
-              Не в датасете
-            </Badge>
-          )}
+          {!modForForgery && BadgeFactory.modForForgery(genuineSignature)}
+          {!modForDataset && BadgeFactory.modForDataset(signature)}
         </>
       );
     }
@@ -322,27 +275,31 @@ export function SignaturePreview({
               <Download size={24} />
             </Button>
 
-            <ToggleButton
-              size='icon'
-              variant='secondary'
-              title={userForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-              iconOn={Eye}
-              iconOff={EyeOff}
-              iconSize={24}
-              isToggled={userForForgery}
-              onToggledChange={() => handleUserForForgery()}
-            />
+            {signatureType === 'genuine' && (
+              <ToggleButton
+                size='icon'
+                variant='secondary'
+                title={userForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
+                iconOn={Eye}
+                iconOff={EyeOff}
+                iconSize={24}
+                isToggled={userForForgery}
+                onToggledChange={() => handleUserForForgery()}
+              />
+            )}
 
-            <ToggleButton
-              size='icon'
-              variant='secondary'
-              title={modForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-              iconOn={ShieldCheck}
-              iconOff={ShieldX}
-              iconSize={24}
-              isToggled={modForForgery}
-              onToggledChange={() => handleModForForgery()}
-            />
+            {signatureType === 'genuine' && (
+              <ToggleButton
+                size='icon'
+                variant='secondary'
+                title={modForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
+                iconOn={ShieldCheck}
+                iconOff={ShieldX}
+                iconSize={24}
+                isToggled={modForForgery}
+                onToggledChange={() => handleModForForgery()}
+              />
+            )}
 
             <ToggleButton
               size='icon'
@@ -380,16 +337,18 @@ export function SignaturePreview({
             <Download size={24} />
           </Button>
 
-          <ToggleButton
-            size='icon'
-            variant='secondary'
-            title={modForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-            iconOn={ShieldCheck}
-            iconOff={ShieldX}
-            iconSize={24}
-            isToggled={modForForgery}
-            onToggledChange={() => handleModForForgery()}
-          />
+          {signatureType === 'genuine' && (
+            <ToggleButton
+              size='icon'
+              variant='secondary'
+              title={modForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
+              iconOn={ShieldCheck}
+              iconOff={ShieldX}
+              iconSize={24}
+              isToggled={modForForgery}
+              onToggledChange={() => handleModForForgery()}
+            />
+          )}
 
           <ToggleButton
             size='icon'
@@ -427,16 +386,18 @@ export function SignaturePreview({
           <Download size={24} />
         </Button>
 
-        <ToggleButton
-          size='icon'
-          variant='secondary'
-          title={userForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-          iconOn={Eye}
-          iconOff={EyeOff}
-          iconSize={24}
-          isToggled={userForForgery}
-          onToggledChange={() => handleUserForForgery()}
-        />
+        {signatureType === 'genuine' && (
+          <ToggleButton
+            size='icon'
+            variant='secondary'
+            title={userForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
+            iconOn={Eye}
+            iconOff={EyeOff}
+            iconSize={24}
+            isToggled={userForForgery}
+            onToggledChange={() => handleUserForForgery()}
+          />
+        )}
 
         <Button
           size='icon'
@@ -490,7 +451,7 @@ export function SignaturePreview({
         )}
       </div>
 
-      <div className='flex items-center gap-2 flex-wrap'>{renderBages()}</div>
+      <div className='flex items-center gap-2 flex-wrap'>{renderBadges()}</div>
 
       {/* Кнопки действий (справа-сверху) */}
       <div className='absolute top-2 right-2 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>

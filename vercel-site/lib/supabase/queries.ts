@@ -1,31 +1,38 @@
+import { createBrowserClient } from '@/lib/supabase/client';
 import {
   Profile,
   Pseudouser,
   Signature,
   SignatureForged,
   SignatureGenuine,
+  SignatureType,
   mapToProfile,
   mapToPseudouser,
   mapToSignatureForged,
   mapToSignatureGenuine,
 } from '@/lib/types';
-import { createServiceClient } from '@/lib/supabase/service';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-function getClient(supabase?: SupabaseClient) {
-  return supabase ?? createServiceClient();
+function getClient(client?: SupabaseClient): SupabaseClient {
+  return client || createBrowserClient();
 }
 
 // ========================================
 // GETS
 // ========================================
 
+/**
+ * Получает профиль пользователя
+ * @param id id пользователя для которого следует получить профиль
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns Profile, если профиль найден, null если пользователь не найден
+ */
 export async function getProfile(
   id: string,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Profile | null> {
-  const client = getClient(supabase);
-  const { data, error } = await client
+  const supabase = getClient(client);
+  const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', id)
@@ -39,12 +46,18 @@ export async function getProfile(
   return mapToProfile(data);
 }
 
+/**
+ * Получает псевдопользователя
+ * @param id id псевдопользователя для которого следует получить псевдопользователя
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns Pseudouser, если псевдопользователь найден, null если псевдопользователь не найден
+ */
 export async function getPseudouser(
   id: string,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Pseudouser | null> {
-  const client = getClient(supabase);
-  const { data, error } = await client
+  const supabase = getClient(client);
+  const { data, error } = await supabase
     .from('pseudousers')
     .select('*')
     .eq('id', id)
@@ -57,9 +70,9 @@ export async function getPseudouser(
   return mapToPseudouser(data);
 }
 
-export async function getUsers(supabase?: SupabaseClient): Promise<Profile[]> {
-  const client = getClient(supabase);
-  const { data, error } = await client.from('profiles').select('*');
+export async function getUsers(client?: SupabaseClient): Promise<Profile[]> {
+  const supabase = getClient(client);
+  const { data, error } = await supabase.from('profiles').select('*');
   if (error) {
     console.error('Ошибка получения пользователей:', error);
     return [];
@@ -68,10 +81,10 @@ export async function getUsers(supabase?: SupabaseClient): Promise<Profile[]> {
 }
 
 export async function getPseudousers(
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Pseudouser[]> {
-  const client = getClient(supabase);
-  const { data, error } = await client.from('pseudousers').select('*');
+  const supabase = getClient(client);
+  const { data, error } = await supabase.from('pseudousers').select('*');
   if (error) {
     console.error('Ошибка получения псевдопользователей:', error);
     return [];
@@ -81,10 +94,10 @@ export async function getPseudousers(
 
 export async function getEmail(
   id: string,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<string | null> {
-  const client = getClient(supabase);
-  const { data, error } = await client.rpc('get_user_email', {
+  const supabase = getClient(client);
+  const { data, error } = await supabase.rpc('get_user_email', {
     profile_id: id,
   });
 
@@ -95,54 +108,65 @@ export async function getEmail(
   return data;
 }
 
+export async function getSignature(
+  id: string,
+  type: SignatureType,
+  client?: SupabaseClient
+): Promise<Signature | null> {
+  return type === 'genuine'
+    ? await getGenuineSignature(id, client)
+    : await getForgedSignature(id, client);
+}
+
 export async function getGenuineSignature(
   id: string,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<SignatureGenuine | null> {
-  const client = getClient(supabase);
-  const { data, error } = await client
-    .from('genuine_signatures')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    console.error('Ошибка получения подписи:', error);
-    return null;
-  }
-  return mapToSignatureGenuine(data);
-}
-
-export async function getForgedSignature(
-  id: string,
-  supabase?: SupabaseClient
-): Promise<SignatureForged | null> {
-  const client = getClient(supabase);
-  const { data, error } = await client
-    .from('forged_signatures')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    console.error('Ошибка получения подписи:', error);
-    return null;
-  }
-  return mapToSignatureForged(data);
-}
-
-export async function searchSignature(
-  id: string,
-  supabase?: SupabaseClient
-): Promise<Signature | null> {
-  const client = getClient(supabase);
-  const { data: genuine } = await client
+  const supabase = getClient(client);
+  const { data, error } = await supabase
     .from('genuine_signatures')
     .select('*')
     .eq('id', id)
     .maybeSingle();
 
-  const { data: forged } = await client
+  if (error) {
+    console.error('[getGenuineSignature] error', error);
+    return null;
+  }
+  return data ? mapToSignatureGenuine(data) : null;
+}
+
+export async function getForgedSignature(
+  id: string,
+  client?: SupabaseClient
+): Promise<SignatureForged | null> {
+  const supabase = getClient(client);
+  const { data, error } = await supabase
+    .from('forged_signatures')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[getForgedSignature] error', error);
+    return null;
+  }
+
+  return data ? mapToSignatureForged(data) : null;
+}
+
+export async function searchSignature(
+  id: string,
+  client?: SupabaseClient
+): Promise<Signature | null> {
+  const supabase = getClient(client);
+  const { data: genuine } = await supabase
+    .from('genuine_signatures')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  const { data: forged } = await supabase
     .from('forged_signatures')
     .select('*')
     .eq('id', id)
@@ -160,11 +184,11 @@ export async function searchSignature(
 
 export async function getUserGenuineSignatures(
   id: string,
-  supabase?: SupabaseClient,
+  client?: SupabaseClient,
   userType: 'user' | 'pseudouser' = 'user'
 ): Promise<SignatureGenuine[]> {
-  const client = getClient(supabase);
-  const { data, error } = await client
+  const supabase = getClient(client);
+  const { data, error } = await supabase
     .from('genuine_signatures')
     .select('*')
     .eq(userType === 'user' ? 'user_id' : 'pseudouser_id', id);
@@ -178,11 +202,11 @@ export async function getUserGenuineSignatures(
 
 export async function getUserForgedSignatures(
   id: string,
-  supabase?: SupabaseClient,
+  client?: SupabaseClient,
   userType: 'user' | 'pseudouser' = 'user'
 ): Promise<SignatureForged[]> {
-  const client = getClient(supabase);
-  const { data, error } = await client
+  const supabase = getClient(client);
+  const { data, error } = await supabase
     .from('forged_signatures')
     .select('*')
     .eq(userType === 'user' ? 'user_id' : 'pseudouser_id', id);
@@ -195,13 +219,13 @@ export async function getUserForgedSignatures(
 }
 
 export async function getGenuineSignaturesAmount(
-  supabase?: SupabaseClient,
+  client?: SupabaseClient,
   dateFrom?: Date,
   dateTo?: Date
 ): Promise<number> {
-  const client = getClient(supabase);
+  const supabase = getClient(client);
 
-  let query = client
+  let query = supabase
     .from('genuine_signatures')
     .select('id', { count: 'exact', head: true });
 
@@ -223,13 +247,13 @@ export async function getGenuineSignaturesAmount(
 }
 
 export async function getForgedSignaturesAmount(
-  supabase?: SupabaseClient,
+  client?: SupabaseClient,
   dateFrom?: Date,
   dateTo?: Date
 ): Promise<number> {
-  const client = getClient(supabase);
+  const supabase = getClient(client);
 
-  let query = client
+  let query = supabase
     .from('forged_signatures')
     .select('id', { count: 'exact', head: true });
 
@@ -252,15 +276,15 @@ export async function getForgedSignaturesAmount(
 
 // TODO: where profile/pseudouser, source for pseudouser
 export async function getGenuineSignatures(
-  supabase?: SupabaseClient,
+  client?: SupabaseClient,
   limit: number = 100,
   offset: number = 0,
   dateFrom?: Date,
   dateTo?: Date
 ): Promise<SignatureGenuine[]> {
-  const client = getClient(supabase);
-  
-  let query = client
+  const supabase = getClient(client);
+
+  let query = supabase
     .from('genuine_signatures')
     .select('*')
     .order('created_at', { ascending: false });
@@ -284,15 +308,15 @@ export async function getGenuineSignatures(
 }
 
 export async function getForgedSignatures(
-  supabase?: SupabaseClient,
+  client?: SupabaseClient,
   limit: number = 100,
   offset: number = 0,
   dateFrom?: Date,
   dateTo?: Date
 ): Promise<SignatureForged[]> {
-  const client = getClient(supabase);
-  
-  let query = client
+  const supabase = getClient(client);
+
+  let query = supabase
     .from('forged_signatures')
     .select('*')
     .order('created_at', { ascending: false });
@@ -318,15 +342,15 @@ export async function getForgedSignatures(
 export async function profilesPrefixSearch(
   queryRaw: string,
   limit: number = 10,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Profile[]> {
   const query = (queryRaw || '').trim();
   if (!query) return [];
 
-  const client = getClient(supabase);
+  const supabase = getClient(client);
   const prefixPattern = `${query}%`;
 
-  const { data, error } = await client
+  const { data, error } = await supabase
     .from('profiles')
     .select('id, role, display_name, created_at, updated_at')
     .ilike('display_name', prefixPattern)
@@ -343,15 +367,15 @@ export async function profilesPrefixSearch(
 export async function pseudousersPrefixSearch(
   queryRaw: string,
   limit: number = 10,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Pseudouser[]> {
   const query = (queryRaw || '').trim();
   if (!query) return [];
 
-  const client = getClient(supabase);
+  const supabase = getClient(client);
   const prefixPattern = `${query}%`;
 
-  const { data, error } = await client
+  const { data, error } = await supabase
     .from('pseudousers')
     .select('*')
     .ilike('name', prefixPattern)
@@ -368,16 +392,16 @@ export async function pseudousersPrefixSearch(
 export async function profilesSubstrSearch(
   queryRaw: string,
   limit: number = 10,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Profile[]> {
   const query = (queryRaw || '').trim();
   if (!query) return [];
 
-  const client = getClient(supabase);
+  const supabase = getClient(client);
   const prefixPattern = `${query}%`;
   const substrPattern = `%${query}%`;
 
-  const { data, error } = await client
+  const { data, error } = await supabase
     .from('profiles')
     .select('id, role, display_name, created_at, updated_at')
     .ilike('display_name', substrPattern)
@@ -395,16 +419,16 @@ export async function profilesSubstrSearch(
 export async function pseudousersSubstrSearch(
   queryRaw: string,
   limit: number = 10,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Pseudouser[]> {
   const query = (queryRaw || '').trim();
   if (!query) return [];
 
-  const client = getClient(supabase);
+  const supabase = getClient(client);
   const prefixPattern = `${query}%`;
   const substrPattern = `%${query}%`;
 
-  const { data, error } = await client
+  const { data, error } = await supabase
     .from('pseudousers')
     .select('*')
     .ilike('name', substrPattern)
@@ -421,10 +445,10 @@ export async function pseudousersSubstrSearch(
 
 export async function getPseudouserByName(
   name: string,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Pseudouser | null> {
-  const client = getClient(supabase);
-  const { data, error } = await client
+  const supabase = getClient(client);
+  const { data, error } = await supabase
     .from('pseudousers')
     .select('*')
     .eq('name', name)
@@ -443,10 +467,10 @@ export async function getPseudouserByName(
 
 export async function insertGenuineSignature(
   signature: SignatureGenuine,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client.from('genuine_signatures').insert(signature);
+  const supabase = getClient(client);
+  const { error } = await supabase.from('genuine_signatures').insert(signature);
 
   if (error) {
     console.error('Insert genuine signature error', error);
@@ -458,10 +482,10 @@ export async function insertGenuineSignature(
 
 export async function insertForgedSignature(
   signature: SignatureForged,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client.from('forged_signatures').insert(signature);
+  const supabase = getClient(client);
+  const { error } = await supabase.from('forged_signatures').insert(signature);
 
   if (error) {
     console.error('Insert forged signature error', error);
@@ -473,10 +497,10 @@ export async function insertForgedSignature(
 
 export async function insertPseudouser(
   pseudouser: { name: string; source: string },
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<Pseudouser | null> {
-  const client = getClient(supabase);
-  const { data, error } = await client
+  const supabase = getClient(client);
+  const { data, error } = await supabase
     .from('pseudousers')
     .insert({ name: pseudouser.name, source: pseudouser.source })
     .select('*')
@@ -494,13 +518,20 @@ export async function insertPseudouser(
 // UPDATES
 // ========================================
 
+/**
+ * Обновляет поле user_for_forgery подписи
+ * @param signatureId id **настоящей** подписи
+ * @param userForForgery true, если подпись предназначена для подделки
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns true, если подпись успешно обновлена, false в противном случае
+ */
 export async function updateUserForForgery(
   signatureId: string,
   userForForgery: boolean,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client
+  const supabase = getClient(client);
+  const { error } = await supabase
     .from('genuine_signatures')
     .update({ user_for_forgery: userForForgery })
     .eq('id', signatureId);
@@ -513,13 +544,20 @@ export async function updateUserForForgery(
   return true;
 }
 
+/**
+ * Обновляет поле mod_for_forgery подписи
+ * @param signatureId id **настоящей** подписи
+ * @param modForForgery true, если подпись предназначена для подделки
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns true, если подпись успешно обновлена, false в противном случае
+ */
 export async function updateModForForgery(
   signatureId: string,
   modForForgery: boolean,
-  supabase?: SupabaseClient
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client
+  const supabase = getClient(client);
+  const { error } = await supabase
     .from('genuine_signatures')
     .update({ mod_for_forgery: modForForgery })
     .eq('id', signatureId);
@@ -532,14 +570,22 @@ export async function updateModForForgery(
   return true;
 }
 
+/**
+ * Обновляет поле mod_for_dataset подписи
+ * @param signatureId id подписи
+ * @param modForDataset true, если подпись предназначена для датасета
+ * @param signatureType тип подписи ('genuine' | 'forged')
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns true, если подпись успешно обновлена, false в противном случае
+ */
 export async function updateModForDataset(
   signatureId: string,
   modForDataset: boolean,
-  supabase?: SupabaseClient,
-  signatureType: 'genuine' | 'forged' = 'genuine'
+  signatureType: 'genuine' | 'forged',
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client
+  const supabase = getClient(client);
+  const { error } = await supabase
     .from(
       signatureType === 'genuine' ? 'genuine_signatures' : 'forged_signatures'
     )
@@ -554,18 +600,23 @@ export async function updateModForDataset(
   return true;
 }
 
+/**
+ * Обновляет поле user_for_forgery для всех подписей пользователя
+ * @param userId id пользователя
+ * @param userForForgery true, если подпись предназначена для подделки
+ * @param userType тип пользователя ('user' | 'pseudouser')
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns true, если подписи успешно обновлены, false в противном случае
+ */
 export async function updateAllUserForForgery(
   userId: string,
   userForForgery: boolean,
-  supabase?: SupabaseClient,
-  userType: 'user' | 'pseudouser' = 'user',
-  signatureType: 'genuine' | 'forged' = 'genuine'
+  userType: 'user' | 'pseudouser',
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client
-    .from(
-      signatureType === 'genuine' ? 'genuine_signatures' : 'forged_signatures'
-    )
+  const supabase = getClient(client);
+  const { error } = await supabase
+    .from('genuine_signatures')
     .update({ user_for_forgery: userForForgery })
     .eq(userType === 'user' ? 'user_id' : 'pseudouser_id', userId);
 
@@ -580,15 +631,12 @@ export async function updateAllUserForForgery(
 export async function updateAllModForForgery(
   userId: string,
   modForForgery: boolean,
-  supabase?: SupabaseClient,
-  userType: 'user' | 'pseudouser' = 'user',
-  signatureType: 'genuine' | 'forged' = 'genuine'
+  userType: 'user' | 'pseudouser',
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client
-    .from(
-      signatureType === 'genuine' ? 'genuine_signatures' : 'forged_signatures'
-    )
+  const supabase = getClient(client);
+  const { error } = await supabase
+    .from('genuine_signatures')
     .update({ mod_for_forgery: modForForgery })
     .eq(userType === 'user' ? 'user_id' : 'pseudouser_id', userId);
 
@@ -600,15 +648,24 @@ export async function updateAllModForForgery(
   return true;
 }
 
+/**
+ * Обновляет поле mod_for_dataset для всех подписей пользователя
+ * @param userId id пользователя
+ * @param modForDataset true, если подпись предназначена для датасета
+ * @param userType тип пользователя ('user' | 'pseudouser')
+ * @param signatureType тип подписи ('genuine' | 'forged')
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns true, если подписи успешно обновлены, false в противном случае
+ */
 export async function updateAllModForDataset(
   userId: string,
   modForDataset: boolean,
-  supabase?: SupabaseClient,
-  userType: 'user' | 'pseudouser' = 'user',
-  signatureType: 'genuine' | 'forged' = 'genuine'
+  userType: 'user' | 'pseudouser',
+  signatureType: 'genuine' | 'forged',
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client
+  const supabase = getClient(client);
+  const { error } = await supabase
     .from(
       signatureType === 'genuine' ? 'genuine_signatures' : 'forged_signatures'
     )
@@ -627,13 +684,21 @@ export async function updateAllModForDataset(
 // DELETES
 // ========================================
 
+/**
+ * Удаляет подпись
+ * @param signatureId id подписи
+ * @param signatureType тип подписи ('genuine' | 'forged')
+ * @param client клиент Supabase {@link SupabaseClient}
+ * @returns true, если подпись успешно удалена, false в противном случае
+ */
 export async function deleteSignature(
   signatureId: string,
-  supabase?: SupabaseClient,
-  signatureType: 'genuine' | 'forged' = 'genuine'
+  signatureType: SignatureType,
+  client?: SupabaseClient
 ): Promise<boolean> {
-  const client = getClient(supabase);
-  const { error } = await client
+  const supabase = getClient(client);
+
+  const { error } = await supabase
     .from(
       signatureType === 'genuine' ? 'genuine_signatures' : 'forged_signatures'
     )
@@ -649,7 +714,7 @@ export async function deleteSignature(
 }
 
 // export async function getRecentSignatures(
-//     supabase?: SupabaseClient,
+//     client?: SupabaseClient,
 //     limitPerType: number = 50,
 // ): Promise<Signature[]> {
 //     const genuine = await getGenuineSignatures(supabase, limitPerType, 0);
