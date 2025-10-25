@@ -14,7 +14,7 @@ interface HealthStatus {
 export async function GET() {
   const startTime = Date.now();
   const timestamp = new Date().toISOString();
-  
+
   const healthStatus: HealthStatus = {
     status: 'healthy',
     timestamp,
@@ -27,7 +27,7 @@ export async function GET() {
   try {
     // Проверяем доступность Supabase
     const supabase = createServiceClient();
-    
+
     // Простой запрос для проверки соединения
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, error } = await supabase

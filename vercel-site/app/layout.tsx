@@ -12,7 +12,7 @@ import { ToastProvider } from '@/components/ui/toast';
 import { ConfirmDialogProvider } from '@/components/ui/alert-dialog';
 import { MobileNavigation } from '@/components/layout/mobile-navigation';
 import { Github } from 'lucide-react';
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 const defaultUrl = process.env.VERCEL_URL
@@ -44,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang='en' suppressHydrationWarning data-scroll-behavior='smooth'>
       <body className={`${geistSans.className} antialiased`}>
         <ToastProvider>
           <ConfirmDialogProvider>
@@ -56,7 +56,7 @@ export default function RootLayout({
             >
               <div className='min-h-screen flex flex-col'>
                 {/* Мобильно-оптимизированный хедер */}
-                <header className='sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-b-foreground/10'>
+                <header className='sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-b-foreground/10'>
                   <div className='container mx-auto px-4 py-2 sm:px-6 lg:px-8'>
                     {/* Основная навигация */}
                     <nav className='flex items-center justify-between h-12'>

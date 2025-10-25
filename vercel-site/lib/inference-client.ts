@@ -46,7 +46,8 @@ class InferenceServerClient {
 
   constructor() {
     this.config = {
-      baseUrl: process.env.NEXT_PUBLIC_INFERENCE_SERVER_URL || 'http://localhost:8000',
+      baseUrl:
+        process.env.NEXT_PUBLIC_INFERENCE_SERVER_URL || 'http://localhost:8000',
       timeout: 30000, // 30 секунд
     };
   }
@@ -63,14 +64,14 @@ class InferenceServerClient {
         original_id: originalId,
         forgery_id: forgeryId,
       };
-      
+
       // console.log('Sending forgery-by-id request:', requestData);
       // console.log('Request URL:', `${this.config.baseUrl}/forgery-by-id/`);
       // console.log('Request headers:', {
       //   'Content-Type': 'application/json',
       // });
       // console.log('Request body stringified:', JSON.stringify(requestData));
-      
+
       const response = await fetch(`${this.config.baseUrl}/forgery-by-id/`, {
         method: 'POST',
         headers: {
@@ -82,12 +83,18 @@ class InferenceServerClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Forgery-by-id request failed:', response.status, errorData);
-        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+        console.error(
+          'Forgery-by-id request failed:',
+          response.status,
+          errorData
+        );
+        console.error(
+          'Response headers:',
+          Object.fromEntries(response.headers.entries())
+        );
         console.error('Response status text:', response.statusText);
         throw new Error(
-          errorData.detail || 
-          `HTTP ${response.status}: ${response.statusText}`
+          errorData.detail || `HTTP ${response.status}: ${response.statusText}`
         );
       }
 
@@ -110,7 +117,7 @@ class InferenceServerClient {
     try {
       // console.log('Sending request to:', `${this.config.baseUrl}/forgery-by-data/`);
       // console.log('Request data:', { originalId, forgeryDataType: typeof forgeryData });
-      
+
       const response = await fetch(`${this.config.baseUrl}/forgery-by-data/`, {
         method: 'POST',
         headers: {
@@ -126,8 +133,7 @@ class InferenceServerClient {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.detail || 
-          `HTTP ${response.status}: ${response.statusText}`
+          errorData.detail || `HTTP ${response.status}: ${response.statusText}`
         );
       }
 
@@ -195,10 +201,7 @@ export function useInferenceServer() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const analyzeForgeryById = async (
-    originalId: string,
-    forgeryId: string
-  ) => {
+  const analyzeForgeryById = async (originalId: string, forgeryId: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -283,11 +286,14 @@ export function useInferenceServer() {
 
 /**
  * Утилита для форматирования результата анализа подделки
- * 
+ *
  * TODO: вынести пороги
  */
 export function formatForgeryResult(result: ForgeryAnalysisResponse) {
-  const similarityPercent = Math.max(Math.round(result.similarity_score * 100), 0);
+  const similarityPercent = Math.max(
+    Math.round(result.similarity_score * 100),
+    0
+  );
   // Определяем подлинность на фронтенде: >90% -> подлинная, иначе подделка
   const isGenuine = similarityPercent > 85;
   const threshold = 85; // Фронтенд порог
@@ -297,7 +303,7 @@ export function formatForgeryResult(result: ForgeryAnalysisResponse) {
     isForgery: !isGenuine, // Обратная логика для совместимости
     threshold,
     similarityScore: result.similarity_score,
-    message: isGenuine 
+    message: isGenuine
       ? `Подпись признана подлинной (${similarityPercent}% схожести, порог: ${threshold}%)`
       : `Подпись признана поддельной (${similarityPercent > 0 ? similarityPercent : 0}% схожести, порог: ${threshold}%)`,
   };
@@ -321,22 +327,22 @@ export function getServerStatus(healthData: HealthResponse) {
     return {
       status: 'error',
       message: 'Сервер недоступен',
-      color: 'text-red-600'
+      color: 'text-red-600',
     };
   }
-  
+
   if (healthData.status === 'healthy') {
     return {
       status: 'healthy',
       message: 'Сервер работает нормально',
-      color: 'text-green-600'
+      color: 'text-green-600',
     };
   }
-  
+
   return {
     status: 'warning',
     message: 'Сервер работает с предупреждениями',
-    color: 'text-yellow-600'
+    color: 'text-yellow-600',
   };
 }
 

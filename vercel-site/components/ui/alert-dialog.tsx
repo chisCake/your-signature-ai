@@ -4,11 +4,21 @@ import * as React from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
+import { Button } from '@/components/ui/button';
+
 interface ConfirmOptions {
   title?: string;
   description?: string;
   confirmText?: string;
   cancelText?: string;
+  confirmVariant?:
+    | 'default'
+    | 'confirm'
+    | 'destructive'
+    | 'outline'
+    | 'secondary'
+    | 'ghost'
+    | 'link';
 }
 
 // expose promise-based confirm function
@@ -49,8 +59,8 @@ export const ConfirmDialogProvider: React.FC<{ children: React.ReactNode }> = ({
       {current && (
         <AlertDialogPrimitive.Root open onOpenChange={() => close(false)}>
           <AlertDialogPrimitive.Portal>
-            <AlertDialogPrimitive.Overlay className='fixed inset-0 bg-black/40' />
-            <AlertDialogPrimitive.Content className='fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background p-6 rounded-md max-w-lg w-full shadow-lg'>
+            <AlertDialogPrimitive.Overlay className='fixed inset-0 bg-black/40 z-50' />
+            <AlertDialogPrimitive.Content className='fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-background p-6 rounded-md max-w-lg w-full shadow-lg'>
               {current.title ? (
                 <AlertDialogPrimitive.Title className='text-lg font-medium mb-2'>
                   {current.title}
@@ -67,20 +77,17 @@ export const ConfirmDialogProvider: React.FC<{ children: React.ReactNode }> = ({
               )}
               <div className='flex justify-end gap-2'>
                 <AlertDialogPrimitive.Cancel asChild>
-                  <button
-                    className='px-4 py-2 border rounded-md'
-                    onClick={() => close(false)}
-                  >
+                  <Button variant='outline' onClick={() => close(false)}>
                     {current.cancelText || 'Отмена'}
-                  </button>
+                  </Button>
                 </AlertDialogPrimitive.Cancel>
                 <AlertDialogPrimitive.Action asChild>
-                  <button
-                    className='px-4 py-2 bg-primary text-primary-foreground rounded-md'
+                  <Button
+                    variant={current.confirmVariant || 'default'}
                     onClick={() => close(true)}
                   >
                     {current.confirmText || 'ОК'}
-                  </button>
+                  </Button>
                 </AlertDialogPrimitive.Action>
               </div>
             </AlertDialogPrimitive.Content>

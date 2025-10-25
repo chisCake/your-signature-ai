@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@/lib/utils/utils';
+import { cn } from '@/lib/utils/client-utils';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import {

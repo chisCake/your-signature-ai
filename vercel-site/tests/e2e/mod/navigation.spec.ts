@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { getAuthTokenName } from '../../utils';
 
-const routes = ['/dashboard-mod', '/signatures', '/users', '/controlled-signature-addition'];
+const routes = [
+  '/dashboard-mod',
+  '/signatures',
+  '/users',
+  '/controlled-signature-addition',
+];
 
 test.describe('Moderator navigation', () => {
   for (const route of routes) {
@@ -20,4 +25,3 @@ test.describe('Moderator navigation', () => {
     expect(cookies.some(c => c.name === getAuthTokenName())).toBeFalsy();
   });
 });
-

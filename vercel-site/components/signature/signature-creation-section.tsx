@@ -1,6 +1,9 @@
 'use client';
 
-import Canvas, { CanvasRef, DEFAULT_CANVAS_SIZE } from '@/components/signature/canvas';
+import Canvas, {
+  CanvasRef,
+  DEFAULT_CANVAS_SIZE,
+} from '@/components/signature/canvas';
 import { Button } from '@/components/ui/button';
 import { CheckboxWithLabel } from '@/components/ui/checkbox-with-label';
 import { useState, useEffect, useRef } from 'react';

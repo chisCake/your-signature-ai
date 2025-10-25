@@ -159,24 +159,25 @@ export async function getProfile(userId: string): Promise<Profile | null> {
  * @param signature подпись из которой следует получить владельца
  * @returns Владельца {@link User} подписи или null, если подпись из внешнего датасета/источника
  */
-export async function getSignatureOwner(signature: Signature): Promise<User | null> {
+export async function getSignatureOwner(
+  signature: Signature
+): Promise<User | null> {
   const client = createBrowserClient();
   if (isSignatureGenuine(signature)) {
-      const ownerId = signature.user_id;
-      if (!ownerId) {
-        // Подпись из внешнего датасета
-        return null;
-      }
-      const ownerProfile = await getProfileQuery(ownerId, client);
-      return ownerProfile ? createProfileUser(ownerProfile) : null;
+    const ownerId = signature.user_id;
+    if (!ownerId) {
+      // Подпись из внешнего датасета
+      return null;
     }
-    else {
-      const ownerId = signature.forger_id;
-      if (!ownerId) {
-        // Подпись из внешнего датасета
-        return null;
-      }
-      const ownerPseudouser = await getPseudouser(ownerId, client);
-      return ownerPseudouser ? createPseudouserUser(ownerPseudouser) : null;
+    const ownerProfile = await getProfileQuery(ownerId, client);
+    return ownerProfile ? createProfileUser(ownerProfile) : null;
+  } else {
+    const ownerId = signature.forger_id;
+    if (!ownerId) {
+      // Подпись из внешнего датасета
+      return null;
     }
+    const ownerPseudouser = await getPseudouser(ownerId, client);
+    return ownerPseudouser ? createPseudouserUser(ownerPseudouser) : null;
+  }
 }

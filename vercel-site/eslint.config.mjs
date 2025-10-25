@@ -36,8 +36,10 @@ const eslintConfig = [
       'no-restricted-syntax': [
         'warn',
         {
-          selector: 'CallExpression[callee.object.name="console"][callee.property.name="log"]',
-          message: 'console.log is not allowed. Use console.error for errors or remove for production.',
+          selector:
+            'CallExpression[callee.object.name="console"][callee.property.name="log"]',
+          message:
+            'console.log is not allowed. Use console.error for errors or remove for production.',
         },
       ],
     },
