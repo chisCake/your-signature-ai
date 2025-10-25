@@ -1,7 +1,7 @@
 import { createBrowserClient } from '@/lib/supabase/client';
+import { getProfile } from '@/lib/supabase/queries';
+import { Profile } from '@/lib/types';
 import { hasRole } from '@/lib/utils/auth-utils';
-import { getProfile, getGenuineSignature } from '@/lib/supabase/queries';
-import { SignatureGenuine, Profile } from '@/lib/types';
 import { User } from '@supabase/supabase-js';
 
 // Константы для кэширования
@@ -117,54 +117,4 @@ export async function isMod(user: User | null = null): Promise<boolean> {
 
 export async function isAdmin(user: User | null = null): Promise<boolean> {
   return hasRole(user || (await getUser()), 'admin');
-}
-
-export async function canEditSignature(
-  signature: SignatureGenuine | null = null,
-  signatureId: string | null = null
-): Promise<boolean> {
-  let targetSignature = signature;
-
-  if (!signatureId && !signature) {
-    console.error('Neither signatureId nor signature provided');
-    return false;
-  }
-
-  if (signatureId) {
-    targetSignature = await getGenuineSignature(signatureId);
-  }
-  // else signature is already provided
-
-  if (!targetSignature) {
-    console.error(`Signature not found ${signatureId}`);
-    return false;
-  }
-
-  if (!targetSignature.user_id) {
-    console.error(`Signature has no user_id ${signatureId}`);
-    return false;
-  }
-
-  const user = await getUser();
-
-  // For owner
-  if (user?.id === targetSignature.user_id) return true;
-
-  const targetUser = await getProfile(targetSignature.user_id);
-  const targetUserRole = targetUser?.role;
-
-  // For admin
-  if (await isAdmin(user)) {
-    return targetUserRole !== 'admin';
-  }
-
-  // For mod
-  if (await isMod(user)) {
-    return targetUserRole !== 'mod' && targetUserRole !== 'admin';
-  }
-
-  console.warn(
-    `Unpredicted situation: user ${user?.id} cannot edit signature ${signatureId}`
-  );
-  return false;
 }

@@ -23,9 +23,11 @@ export function useUser(): UseUserReturn {
 
     // Get initial user
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
-      
+
       if (user) {
         setIsMod(hasRole(user, 'mod'));
         setIsAdmin(hasRole(user, 'admin'));
@@ -33,28 +35,28 @@ export function useUser(): UseUserReturn {
         setIsMod(false);
         setIsAdmin(false);
       }
-      
+
       setLoading(false);
     };
 
     getUser();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          setIsMod(hasRole(session.user, 'mod'));
-          setIsAdmin(hasRole(session.user, 'admin'));
-        } else {
-          setIsMod(false);
-          setIsAdmin(false);
-        }
-        
-        setLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        setIsMod(hasRole(session.user, 'mod'));
+        setIsAdmin(hasRole(session.user, 'admin'));
+      } else {
+        setIsMod(false);
+        setIsAdmin(false);
       }
-    );
+
+      setLoading(false);
+    });
 
     return () => subscription.unsubscribe();
   }, []);

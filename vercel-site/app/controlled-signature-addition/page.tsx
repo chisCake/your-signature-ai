@@ -5,7 +5,7 @@ import { UserSearchDropdown } from '@/components/user/user-search-dropdown';
 import {
   ensurePseudouser,
   getUserGenuineSignatures,
-} from '@/lib/utils/mod-utils';
+} from '@/lib/utils/mod-client-utils';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { SignatureList } from '@/components/signature/signature-list';
@@ -167,7 +167,6 @@ export default function ControlledSignatureAddition() {
             </div>
           )}
 
-          {/* Кнопка "Начать" */}
           {selectedUser && (
             <Button variant='confirm' onClick={() => setModalOpen(true)}>
               Начать

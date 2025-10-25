@@ -1,6 +1,11 @@
-import { Signature, SignaturePoint, SignatureGenuine } from '@/lib/types';
-import { toast } from '@/components/ui/toast';
 import { confirm } from '@/components/ui/alert-dialog';
+import { toast } from '@/components/ui/toast';
+import {
+  Signature,
+  SignatureGenuine,
+  SignaturePoint,
+  isSignatureGenuine,
+} from '@/lib/types';
 
 export interface BaseSaveOptions {
   points: SignaturePoint[];
@@ -8,10 +13,6 @@ export interface BaseSaveOptions {
   userForForgery?: boolean;
   endpoint?: string;
 }
-
-// export interface SaveOwnSignatureOptions extends BaseSaveOptions {
-//   // Extends BaseSaveOptions with no additional properties
-// }
 
 export interface SaveForAnotherSignatureOptions extends BaseSaveOptions {
   targetTable: 'profiles' | 'pseudousers';
@@ -270,7 +271,7 @@ export async function toggleUserForForgery(
   signature: SignatureGenuine
 ): Promise<void> {
   try {
-    const res = await fetch(`/api/signatures/${signature.id}`, {
+    const res = await fetch(`/api/signatures/${signature.id}?type=genuine`, {
       method: 'PATCH',
       body: JSON.stringify({ userForForgery: !signature.user_for_forgery }),
     });
@@ -301,7 +302,7 @@ export async function toggleModForForgery(
   signature: SignatureGenuine
 ): Promise<void> {
   try {
-    const res = await fetch(`/api/signatures/${signature.id}`, {
+    const res = await fetch(`/api/signatures/${signature.id}?type=genuine`, {
       method: 'PATCH',
       body: JSON.stringify({ modForForgery: !signature.mod_for_forgery }),
     });
@@ -328,12 +329,15 @@ export async function toggleModForForgery(
 }
 
 export async function toggleModForDataset(signature: Signature): Promise<void> {
-  // TODO: Разбить на Genuine и Forged
+  const signatureType = isSignatureGenuine(signature) ? 'genuine' : 'forged';
   try {
-    const res = await fetch(`/api/signatures/${signature.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ modForDataset: !signature.mod_for_dataset }),
-    });
+    const res = await fetch(
+      `/api/signatures/${signature.id}?type=${signatureType}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ modForDataset: !signature.mod_for_dataset }),
+      }
+    );
 
     if (!res.ok) {
       const msg = await res.json().catch(() => ({}));
@@ -356,23 +360,30 @@ export async function toggleModForDataset(signature: Signature): Promise<void> {
   }
 }
 
+/**
+ * Удаляет подпись.
+ * **Определение типа подписи производится автоматически**
+ * @param signature подпись для удаления
+ * @returns true, если подпись успешно удалена, false в противном случае
+ */
 export async function deleteSignature(signature: Signature): Promise<boolean> {
-  // TODO: Разбить на Genuine и Forged
   const ok = await confirm({
     description: 'Вы уверены, что хотите удалить эту подпись?',
     confirmText: 'Удалить',
     cancelText: 'Отмена',
+    confirmVariant: 'destructive',
   });
   if (!ok) return false;
 
+  const type = isSignatureGenuine(signature) ? 'genuine' : 'forged';
+
   try {
-    const res = await fetch(`/api/signatures/${signature.id}`, {
+    const res = await fetch(`/api/signatures/${signature.id}?type=${type}`, {
       method: 'DELETE',
     });
 
     if (!res.ok) {
       const msg = await res.json().catch(() => ({}));
-      // console.log(msg);
       toast({
         description: msg.error || 'Ошибка удаления подписи',
         type: 'background',
@@ -382,7 +393,9 @@ export async function deleteSignature(signature: Signature): Promise<boolean> {
 
     // Сообщаем другим компонентам о том, что подпись была удалена
     window.dispatchEvent(
-      new CustomEvent('signatureDeleted', { detail: { id: signature.id } })
+      new CustomEvent('signatureDeleted', {
+        detail: { id: signature.id, type: type },
+      })
     );
     return true;
   } catch (error) {

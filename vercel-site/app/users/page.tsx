@@ -4,7 +4,7 @@ import {
   getUsers,
   getPseudousers,
   getUserGenuineSignatures,
-} from '@/lib/utils/mod-utils';
+} from '@/lib/utils/mod-client-utils';
 import {
   Profile,
   Pseudouser,
@@ -28,7 +28,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { SignatureList, PreviewField } from '@/components/signature/signature-list';
+import {
+  SignatureList,
+  PreviewField,
+} from '@/components/signature/signature-list';
 import { UserList } from '@/components/user/user-list';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
@@ -49,7 +52,6 @@ import {
   Ban,
 } from 'lucide-react';
 import { getUserProfile } from '@/lib/utils/auth-client-utils';
-
 
 export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
@@ -355,13 +357,13 @@ export default function UsersPage() {
                   </div>
 
                   <div className='max-h-96 overflow-y-auto'>
-                    <UserList 
+                    <UserList
                       users={filteredUsers}
                       loading={loading}
                       selectedUserId={selectedUser?.data.id ?? null}
                       onUserSelect={handleUserSelect}
-                      emptyStateTitle="Пользователи не найдены"
-                      emptyStateDescription="Попробуйте изменить критерии поиска"
+                      emptyStateTitle='Пользователи не найдены'
+                      emptyStateDescription='Попробуйте изменить критерии поиска'
                       showHeader={false}
                       batchSize={50}
                     />
@@ -448,7 +450,11 @@ export default function UsersPage() {
                           </label>
                           <div className='text-sm flex items-center gap-1'>
                             <Mail className='h-4 w-4' />
-                            {userEmailLoading ? <LoaderCircle className='animate-spin' /> : userEmail}
+                            {userEmailLoading ? (
+                              <LoaderCircle className='animate-spin' />
+                            ) : (
+                              userEmail
+                            )}
                           </div>
                         </div>
                       )}
