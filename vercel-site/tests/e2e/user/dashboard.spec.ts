@@ -16,4 +16,3 @@ test.describe('User dashboard', () => {
     expect(cookies.find(c => c.name === getAuthTokenName())).toBeUndefined();
   });
 });
-

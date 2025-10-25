@@ -48,7 +48,7 @@ export function UserList({
 
   const loadMore = useCallback(() => {
     if (isLoadingMore || !hasMore) return;
-    
+
     setIsLoadingMore(true);
     // Имитируем небольшую задержку для плавности
     setTimeout(() => {
@@ -81,45 +81,48 @@ export function UserList({
       {/* Заголовок с количеством */}
       {showHeader && (
         <div className='flex items-center justify-between mb-2'>
-          <h3 className='text-lg font-semibold'>
-            Найдено: {users.length}
-          </h3>
+          <h3 className='text-lg font-semibold'>Найдено: {users.length}</h3>
         </div>
       )}
 
       {/* Список пользователей */}
       <div className='space-y-1'>
-        {visibleUsers.map((user) => (
+        {visibleUsers.map(user => (
           <div
             key={user.data.id}
             onClick={() => onUserSelect?.(user)}
             className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 ${
-              selectedUserId === user.data.id ? "border-primary bg-primary/10" : "border-border"
+              selectedUserId === user.data.id
+                ? 'border-primary bg-primary/10'
+                : 'border-border'
             }`}
           >
-            <div className="flex items-center gap-3">
+            <div className='flex items-center gap-3'>
               <div
                 className={`p-2 rounded-full ${
-                  user.type === "user"
-                    ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400"
-                    : "bg-violet-100 text-violet-600 dark:bg-violet-900 dark:text-violet-400"
+                  user.type === 'user'
+                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900 dark:text-emerald-400'
+                    : 'bg-violet-100 text-violet-600 dark:bg-violet-900 dark:text-violet-400'
                 }`}
               >
-                <UserIcon className="h-4 w-4" />
+                <UserIcon className='h-4 w-4' />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{getUserName(user)}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={user.type === "user" ? "default" : "secondary"} className="text-xs">
-                    {user.type === "user" ? "Пользователь" : "Псевдо"}
+              <div className='flex-1 min-w-0'>
+                <div className='font-medium truncate'>{getUserName(user)}</div>
+                <div className='flex items-center gap-2 mt-1'>
+                  <Badge
+                    variant={user.type === 'user' ? 'default' : 'secondary'}
+                    className='text-xs'
+                  >
+                    {user.type === 'user' ? 'Пользователь' : 'Псевдо'}
                   </Badge>
                   {isProfile(user) && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant='outline' className='text-xs'>
                       {user.data.role}
                     </Badge>
                   )}
                   {isPseudouser(user) && (
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant='outline' className='text-xs'>
                       {user.data.source}
                     </Badge>
                   )}
@@ -128,20 +131,20 @@ export function UserList({
             </div>
           </div>
         ))}
-        
+
         {/* Кнопка загрузки дополнительных пользователей */}
         {hasMore && (
-          <div className="flex justify-center py-4">
+          <div className='flex justify-center py-4'>
             <Button
-              variant="outline"
-              size="sm"
+              variant='outline'
+              size='sm'
               onClick={loadMore}
               disabled={isLoadingMore}
-              className="w-full"
+              className='w-full'
             >
               {isLoadingMore ? (
                 <>
-                  <LoaderCircle className="h-4 w-4 animate-spin mr-2" />
+                  <LoaderCircle className='h-4 w-4 animate-spin mr-2' />
                   Загрузка...
                 </>
               ) : (

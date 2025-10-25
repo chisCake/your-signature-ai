@@ -4,7 +4,10 @@ import CreateSignatureSection from '@/components/signature/signature-creation-se
 import { Button } from '@/components/ui/button';
 import { DashboardSection } from '@/components/dashboard/dashboard-section';
 import { Profile, Signature } from '@/lib/types';
-import { SignatureList, PreviewField } from '@/components/signature/signature-list';
+import {
+  SignatureList,
+  PreviewField,
+} from '@/components/signature/signature-list';
 import {
   formatSignatureDate,
   getShortSignatureId,
@@ -167,7 +170,9 @@ export default function UserDashboard() {
                   <label className='text-xs sm:text-sm font-medium text-muted-foreground'>
                     ID
                   </label>
-                  <div className='text-xs sm:text-sm font-mono break-all'>{currentUser.id}</div>
+                  <div className='text-xs sm:text-sm font-mono break-all'>
+                    {currentUser.id}
+                  </div>
                 </div>
                 <div className='space-y-1 sm:col-span-2'>
                   <label className='text-xs sm:text-sm font-medium text-muted-foreground'>
@@ -202,16 +207,19 @@ export default function UserDashboard() {
             <div className='text-center py-6 sm:py-8 text-muted-foreground'>
               <UserIcon className='h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-2 opacity-50' />
               <div className='text-xs sm:text-sm flex flex-row items-center justify-center gap-2'>
-                <LoaderCircle className='animate-spin h-3 w-3 sm:h-4 sm:w-4' /> 
+                <LoaderCircle className='animate-spin h-3 w-3 sm:h-4 sm:w-4' />
                 Загрузка данных пользователя
               </div>
             </div>
           )}
         </DashboardSection>
 
-      <DashboardSection title='Создать подпись'>
-        <CreateSignatureSection onSignatureSaved={fetchSignatures} canvasClassName={`${CANVAS_SIZE_MOBILE} ${CANVAS_SIZE_DESKTOP}`}/>
-      </DashboardSection>
+        <DashboardSection title='Создать подпись'>
+          <CreateSignatureSection
+            onSignatureSaved={fetchSignatures}
+            canvasClassName={`${CANVAS_SIZE_MOBILE} ${CANVAS_SIZE_DESKTOP}`}
+          />
+        </DashboardSection>
 
         <DashboardSection title='Приватность'>
           <div className='flex flex-col gap-4'>
@@ -220,8 +228,8 @@ export default function UserDashboard() {
                 Использование подписей как примеров для подделки
               </span>
               <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-2'>
-                <Button 
-                  variant='confirm' 
+                <Button
+                  variant='confirm'
                   onClick={() => bulkUpdateForgery(true)}
                   className='w-full sm:w-auto text-xs sm:text-sm'
                 >

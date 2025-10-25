@@ -3,11 +3,15 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { CalendarIcon, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
-export type DateFilterType = 
+export type DateFilterType =
   | 'all'
   | 'last-day'
   | 'last-3-days'
@@ -26,7 +30,11 @@ interface DateFilterProps {
   disabled?: boolean;
 }
 
-export function DateFilter({ value, onChange, disabled = false }: DateFilterProps) {
+export function DateFilter({
+  value,
+  onChange,
+  disabled = false,
+}: DateFilterProps) {
   const [isCustomOpen, setIsCustomOpen] = useState(false);
 
   const handlePresetChange = (type: DateFilterType) => {
@@ -97,12 +105,12 @@ export function DateFilter({ value, onChange, disabled = false }: DateFilterProp
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Clock className="h-4 w-4 text-muted-foreground" />
-      <div className="flex items-center gap-1">
+    <div className='flex items-center gap-2'>
+      <Clock className='h-4 w-4 text-muted-foreground' />
+      <div className='flex items-center gap-1'>
         <Button
           variant={value.type === 'all' ? 'default' : 'outline'}
-          size="sm"
+          size='sm'
           onClick={() => handlePresetChange('all')}
           disabled={disabled}
         >
@@ -110,7 +118,7 @@ export function DateFilter({ value, onChange, disabled = false }: DateFilterProp
         </Button>
         <Button
           variant={value.type === 'last-day' ? 'default' : 'outline'}
-          size="sm"
+          size='sm'
           onClick={() => handlePresetChange('last-day')}
           disabled={disabled}
         >
@@ -118,7 +126,7 @@ export function DateFilter({ value, onChange, disabled = false }: DateFilterProp
         </Button>
         <Button
           variant={value.type === 'last-3-days' ? 'default' : 'outline'}
-          size="sm"
+          size='sm'
           onClick={() => handlePresetChange('last-3-days')}
           disabled={disabled}
         >
@@ -126,7 +134,7 @@ export function DateFilter({ value, onChange, disabled = false }: DateFilterProp
         </Button>
         <Button
           variant={value.type === 'last-week' ? 'default' : 'outline'}
-          size="sm"
+          size='sm'
           onClick={() => handlePresetChange('last-week')}
           disabled={disabled}
         >
@@ -136,15 +144,15 @@ export function DateFilter({ value, onChange, disabled = false }: DateFilterProp
           <PopoverTrigger asChild>
             <Button
               variant={value.type === 'custom' ? 'default' : 'outline'}
-              size="sm"
+              size='sm'
               disabled={disabled}
-              className="flex items-center gap-1"
+              className='flex items-center gap-1'
             >
-              <CalendarIcon className="h-4 w-4" />
+              <CalendarIcon className='h-4 w-4' />
               Период
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className='w-auto p-0' align='start'>
             <CustomDatePicker
               from={value.from}
               to={value.to}
@@ -155,9 +163,7 @@ export function DateFilter({ value, onChange, disabled = false }: DateFilterProp
         </Popover>
       </div>
       {value.type !== 'all' && (
-        <div className="text-sm text-muted-foreground">
-          {getDisplayText()}
-        </div>
+        <div className='text-sm text-muted-foreground'>{getDisplayText()}</div>
       )}
     </div>
   );
@@ -170,10 +176,18 @@ interface CustomDatePickerProps {
   onCancel: () => void;
 }
 
-function CustomDatePicker({ from, to, onChange, onCancel }: CustomDatePickerProps) {
-  const [selectedRange, setSelectedRange] = useState<{from?: Date, to?: Date}>({ from, to });
+function CustomDatePicker({
+  from,
+  to,
+  onChange,
+  onCancel,
+}: CustomDatePickerProps) {
+  const [selectedRange, setSelectedRange] = useState<{
+    from?: Date;
+    to?: Date;
+  }>({ from, to });
 
-  const handleRangeSelect = (range: {from?: Date, to?: Date} | undefined) => {
+  const handleRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
     if (range) {
       setSelectedRange(range);
     }
@@ -196,16 +210,18 @@ function CustomDatePicker({ from, to, onChange, onCancel }: CustomDatePickerProp
   };
 
   const today = new Date();
-  const maxDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const maxDate = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="space-y-2">
-        <div className="text-sm font-medium">
-          Выберите период
-        </div>
+    <div className='p-4 space-y-4'>
+      <div className='space-y-2'>
+        <div className='text-sm font-medium'>Выберите период</div>
         <Calendar
-          mode="range"
+          mode='range'
           selected={
             selectedRange.from && selectedRange.to
               ? { from: selectedRange.from, to: selectedRange.to }
@@ -213,16 +229,14 @@ function CustomDatePicker({ from, to, onChange, onCancel }: CustomDatePickerProp
           }
           onSelect={handleRangeSelect}
           disabled={{ after: maxDate }}
-          className="rounded-md border"
+          className='rounded-md border'
         />
       </div>
-      
+
       {(selectedRange.from || selectedRange.to) && (
-        <div className="space-y-2">
-          <div className="text-sm text-muted-foreground">
-            Выбранный период:
-          </div>
-          <div className="text-sm">
+        <div className='space-y-2'>
+          <div className='text-sm text-muted-foreground'>Выбранный период:</div>
+          <div className='text-sm'>
             {selectedRange.from && (
               <div>С: {format(selectedRange.from, 'dd.MM.yyyy')}</div>
             )}
@@ -233,27 +247,19 @@ function CustomDatePicker({ from, to, onChange, onCancel }: CustomDatePickerProp
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className='flex gap-2'>
         <Button
           onClick={handleApply}
-          size="sm"
-          className="flex-1"
+          size='sm'
+          className='flex-1'
           disabled={!selectedRange.from && !selectedRange.to}
         >
           Применить
         </Button>
-        <Button
-          onClick={handleClear}
-          variant="outline"
-          size="sm"
-        >
+        <Button onClick={handleClear} variant='outline' size='sm'>
           Очистить
         </Button>
-        <Button
-          onClick={handleCancel}
-          variant="ghost"
-          size="sm"
-        >
+        <Button onClick={handleCancel} variant='ghost' size='sm'>
           Отмена
         </Button>
       </div>

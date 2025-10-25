@@ -130,8 +130,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ 
-    success: true, 
-    id: insertData.id 
+  return NextResponse.json({
+    success: true,
+    id: insertData.id,
   });
 }

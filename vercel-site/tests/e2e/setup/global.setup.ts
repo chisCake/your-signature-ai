@@ -45,16 +45,23 @@ export default async function globalSetup(_: FullConfig) {
 
     if (!userId) {
       // Пользователь, возможно, уже существует. Находим его через listUsers
-      const { data: usersList, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const { data: usersList, error: listErr } =
+        await supabase.auth.admin.listUsers({ perPage: 1000 });
       if (listErr) throw listErr;
-      const found = usersList.users.find(u => u.email?.toLowerCase() === user.email.toLowerCase());
+      const found = usersList.users.find(
+        u => u.email?.toLowerCase() === user.email.toLowerCase()
+      );
       if (found) userId = found.id;
     }
 
     if (!userId) throw new Error(`Could not obtain id for ${user.email}`);
 
     // Проверяем, есть ли профиль; если нет, вставляем
-    const { data: profileExists } = await supabase.from('profiles').select('id').eq('id', userId).single();
+    const { data: profileExists } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
     if (!profileExists) {
       const { error: profileErr } = await supabase.from('profiles').insert({
         id: userId,

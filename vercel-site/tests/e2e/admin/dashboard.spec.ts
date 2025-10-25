@@ -15,4 +15,3 @@ test.describe('Admin dashboard', () => {
     expect(cookies.some(c => c.name === getAuthTokenName())).toBeFalsy();
   });
 });
-

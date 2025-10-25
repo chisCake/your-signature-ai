@@ -8,7 +8,10 @@ import Canvas, { CanvasRef } from '@/components/signature/canvas';
 import { LoaderCircle, PenLine, RotateCcw } from 'lucide-react';
 import { csvStringToPoints } from '@/lib/utils/signature-utils';
 import { toast } from '@/components/ui/toast';
-import { useInferenceServer, ForgeryAnalysisResponse } from '@/lib/inference-client';
+import {
+  useInferenceServer,
+  ForgeryAnalysisResponse,
+} from '@/lib/inference-client';
 import { ComparisonResultModal } from '@/components/signature/comparison-result-modal';
 
 // Адаптивные размеры холста для мобильных устройств
@@ -23,13 +26,18 @@ export default function Home() {
   const [loadingSignature, setLoadingSignature] = useState(true);
   const [loadingResult, setLoadingResult] = useState(false);
   const [mobileMode, setMobileMode] = useState(false);
-  
+
   // Состояние для модального окна с результатом анализа подделки
-  const [forgeryResult, setForgeryResult] = useState<ForgeryAnalysisResponse | null>(null);
+  const [forgeryResult, setForgeryResult] =
+    useState<ForgeryAnalysisResponse | null>(null);
   const [showForgeryModal, setShowForgeryModal] = useState(false);
-  
+
   // Хук для работы с inference сервером
-  const { analyzeForgeryById, isLoading: inferenceLoading, error: inferenceError } = useInferenceServer();
+  const {
+    analyzeForgeryById,
+    isLoading: inferenceLoading,
+    error: inferenceError,
+  } = useInferenceServer();
 
   const getNewSignature = () => {
     setLoadingSignature(true);
@@ -65,11 +73,11 @@ export default function Home() {
         toast({ description: 'Нельзя сохранить пустую подпись' });
         return;
       }
-      
+
       const inputType = canvas.getInputType();
 
       setLoadingResult(true);
-      
+
       try {
         // Сохраняем подделку в БД
         const saveResponse = await fetch('/api/forgery', {
@@ -90,7 +98,7 @@ export default function Home() {
 
         const saveResult = await saveResponse.json();
         // console.log('Save result:', saveResult);
-        
+
         const forgedSignatureId = saveResult.id;
         // console.log('Forged signature ID:', forgedSignatureId);
 
@@ -116,11 +124,10 @@ export default function Home() {
         // Очищаем холст и загружаем новую подпись
         canvas.clear();
         getNewSignature();
-
       } catch (error) {
         console.error('Error saving and analyzing signature:', error);
-        toast({ 
-          description: 'Ошибка при сохранении подписи или анализе'
+        toast({
+          description: 'Ошибка при сохранении подписи или анализе',
         });
       } finally {
         setLoadingResult(false);
@@ -169,7 +176,10 @@ export default function Home() {
                 {loadingSignature ? (
                   <>
                     Поиск подписи
-                    <LoaderCircle size={mobileMode ? 16 : 24} className='ml-2 animate-spin' />
+                    <LoaderCircle
+                      size={mobileMode ? 16 : 24}
+                      className='ml-2 animate-spin'
+                    />
                   </>
                 ) : (
                   'Попробовать другую'
@@ -202,7 +212,10 @@ export default function Home() {
                 {loadingResult ? (
                   <>
                     Сохранение
-                    <LoaderCircle size={mobileMode ? 16 : 24} className='ml-2 animate-spin' />
+                    <LoaderCircle
+                      size={mobileMode ? 16 : 24}
+                      className='ml-2 animate-spin'
+                    />
                   </>
                 ) : (
                   'Анализировать подпись'

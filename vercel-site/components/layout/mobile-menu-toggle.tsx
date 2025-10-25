@@ -41,9 +41,7 @@ export function MobileMenuToggle({ children }: MobileMenuToggleProps) {
           >
             {/* Меню */}
             <div className='fixed top-0 right-0 left-0 pt-4 bg-background border-b border-b-foreground/10 z-50 shadow-lg'>
-              <div className='px-4 pb-6 space-y-6'>
-                {children}
-              </div>
+              <div className='px-4 pb-6 space-y-6'>{children}</div>
             </div>
           </div>
         </>

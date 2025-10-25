@@ -11,5 +11,13 @@
   "endOfLine": "lf",
   "quoteProps": "as-needed",
   "jsxSingleQuote": true,
-  "proseWrap": "preserve"
+  "proseWrap": "preserve",
+  "overrides": [
+    {
+      "files": "*.ts",
+      "options": {
+        "parser": "typescript"
+      }
+    }
+  ]
 }

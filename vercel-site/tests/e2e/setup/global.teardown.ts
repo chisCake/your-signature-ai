@@ -11,7 +11,11 @@ export default async function globalTeardown() {
   // читаем список созданных пользователей
   const fs = await import('fs/promises');
   const path = await import('path');
-  const createdUsersPath = path.join(__dirname, '../storage', 'created-users.json');
+  const createdUsersPath = path.join(
+    __dirname,
+    '../storage',
+    'created-users.json'
+  );
 
   try {
     const content = await fs.readFile(createdUsersPath, 'utf-8');
