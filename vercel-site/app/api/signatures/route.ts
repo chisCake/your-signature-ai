@@ -1,11 +1,21 @@
+import { getProfile, insertGenuineSignature } from '@/lib/supabase/queries';
+import { createServiceClient } from '@/lib/supabase/service';
+import { getUser, isMod } from '@/lib/utils/auth-server-utils';
+import { prepareGenuineSignatureDataForInsert } from '@/lib/utils/signature-utils';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getUser, isMod } from '@/lib/utils/auth-server-utils';
-import { createServiceClient } from '@/lib/supabase/service';
-import { getProfile } from '@/lib/supabase/queries';
 
 const bodySchema = z.object({
-  csvData: z.string().min(7), // минимум длины заголовка "t,x,y,p\n..."
+  points: z
+    .array(
+      z.object({
+        timestamp: z.number(),
+        x: z.number(),
+        y: z.number(),
+        pressure: z.number(),
+      })
+    )
+    .min(1),
   inputType: z.enum(['mouse', 'touch', 'pen']),
   userForForgery: z.boolean().optional(),
   targetTable: z.enum(['profiles', 'pseudousers']).optional(),
@@ -35,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   const {
-    csvData,
+    points,
     inputType,
     userForForgery = false,
     targetTable,
@@ -60,30 +70,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const supabaseSR = createServiceClient();
-  const { data, error } = await supabaseSR
-    .from('genuine_signatures')
-    .insert([
-      {
-        user_id: userId,
-        pseudouser_id: pseudouserId,
-        features_table: csvData,
-        input_type: inputType,
-        user_for_forgery: userForForgery,
-      },
-    ])
-    .select('id')
-    .single();
+  const signatureData = prepareGenuineSignatureDataForInsert(
+    points,
+    inputType,
+    userId,
+    pseudouserId,
+    userForForgery
+  );
 
-  if (error) {
-    console.error('Insert error', error);
+  const supabaseSR = createServiceClient();
+  const signature = await insertGenuineSignature(signatureData, supabaseSR);
+
+  if (!signature) {
     return NextResponse.json(
       { error: 'Database insert failed' },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ id: data.id });
+  return NextResponse.json({ id: signature.id });
 }
 
 // Вспомогательные функции для массового обновления всех подписей пользователя

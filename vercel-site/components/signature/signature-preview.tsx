@@ -2,40 +2,37 @@
 
 import { PreviewField } from '@/components/signature/signature-list';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ToggleButton } from '@/components/ui/toggle-button';
 import {
-  SignatureForged,
-  SignatureGenuine,
-  isSignatureGenuine,
-} from '@/lib/types';
+  useAuthenticityBadge,
+  useDeleteSignatureButton,
+  useDownloadSignatureButton,
+  useModForDatasetBadge,
+  useModForDatasetButton,
+  useModForForgeryBadge,
+  useModForForgeryButton,
+  useOpenSignatureButton,
+  useUserForForgeryBadge,
+  useUserForForgeryButton,
+} from '@/lib/hooks/use-signature';
+import { Signature, SignatureGenuine } from '@/lib/types';
 import { getUser, isMod } from '@/lib/utils/auth-client-utils';
-import { BadgeFactory } from '@/lib/utils/badge-factory';
 import {
   deleteSignature,
   downloadSignatureAsPNG,
   generateSignaturePNG,
+  getGenuineSignatureOwnerId,
+  getSignatureOwnerId,
   toggleModForDataset,
   toggleModForForgery,
   toggleUserForForgery,
 } from '@/lib/utils/signature-utils';
-import {
-  Ban,
-  Database,
-  Download,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  ShieldX,
-  X,
-} from 'lucide-react';
 import Image from 'next/image';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 interface SignaturePreviewProps {
-  signature: SignatureGenuine | SignatureForged;
+  signature: Signature;
   previewFields?: PreviewField[];
-  onOpenModal: (signature: SignatureGenuine | SignatureForged) => void;
+  onOpenModal: (signature: Signature) => void;
 }
 
 export function SignaturePreview({
@@ -43,27 +40,41 @@ export function SignaturePreview({
   previewFields,
   onOpenModal,
 }: SignaturePreviewProps) {
+  // Состояния разрешений
   const [userForForgery, setUserForForgery] = useState<boolean>(
-    'user_for_forgery' in signature
-      ? (signature.user_for_forgery ?? false)
+    'user_for_forgery' in signature.data
+      ? signature.data.user_for_forgery === true
       : false
   );
   const [modForForgery, setModForForgery] = useState<boolean>(
-    'mod_for_forgery' in signature
-      ? (signature.mod_for_forgery ?? false)
+    'mod_for_forgery' in signature.data
+      ? signature.data.mod_for_forgery === true
       : false
   );
   const [modForDataset, setModForDataset] = useState<boolean>(
-    'mod_for_dataset' in signature
-      ? (signature.mod_for_dataset ?? false)
+    'mod_for_dataset' in signature.data
+      ? signature.data.mod_for_dataset === true
       : false
   );
+
+  const [userForForgeryLoading, setUserForForgeryLoading] =
+    useState<boolean>(false);
+  const [modForForgeryLoading, setModForForgeryLoading] =
+    useState<boolean>(false);
+  const [modForDatasetLoading, setModForDatasetLoading] =
+    useState<boolean>(false);
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isCurrentUserMod, setIsCurrentUserMod] = useState<boolean>(false);
   const [deleted, setDeleted] = useState<boolean>(false);
   const [isProfileLoading, setIsProfileLoading] = useState<boolean>(true);
+  const isGenuine = signature.type === 'genuine';
 
-  const signatureType = isSignatureGenuine(signature) ? 'genuine' : 'forged';
+  // Бэйджи-хуки
+  const authenticityBadge = useAuthenticityBadge(isGenuine);
+  const userForForgeryBadge = useUserForForgeryBadge(userForForgery, isGenuine);
+  const modForForgeryBadge = useModForForgeryBadge(modForForgery, isGenuine);
+  const modForDatasetBadge = useModForDatasetBadge(modForDataset);
 
   useEffect(() => {
     const getCurentUserData = async () => {
@@ -78,19 +89,23 @@ export function SignaturePreview({
   // Sync local state when parent passes new signature object
   useEffect(() => {
     if ('user_for_forgery' in signature) {
-      setUserForForgery(signature.user_for_forgery ?? false);
+      setUserForForgery(
+        (signature.data as SignatureGenuine).user_for_forgery ?? false
+      );
     }
   }, [signature]);
 
   useEffect(() => {
     if ('mod_for_forgery' in signature) {
-      setModForForgery(signature.mod_for_forgery ?? false);
+      setModForForgery(
+        (signature.data as SignatureGenuine).mod_for_forgery ?? false
+      );
     }
   }, [signature]);
 
   useEffect(() => {
     if ('mod_for_dataset' in signature) {
-      setModForDataset(signature.mod_for_dataset ?? false);
+      setModForDataset(signature.data.mod_for_dataset ?? false);
     }
   }, [signature]);
 
@@ -103,7 +118,7 @@ export function SignaturePreview({
         mod_for_forgery?: boolean;
         mod_for_dataset?: boolean;
       };
-      if (detail.id !== signature.id) return;
+      if (detail.id !== signature.data.id) return;
       if (detail.user_for_forgery !== undefined) {
         setUserForForgery(detail.user_for_forgery);
       }
@@ -116,7 +131,7 @@ export function SignaturePreview({
     };
     window.addEventListener('signatureUpdated', handler);
     return () => window.removeEventListener('signatureUpdated', handler);
-  }, [signature.id]);
+  }, [signature.data.id]);
 
   const [previewUrl, setPreviewUrl] = useState<string>('');
 
@@ -148,37 +163,95 @@ export function SignaturePreview({
     return () => mediaQuery.removeEventListener('change', handler);
   }, [signature]);
 
-  const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    downloadSignatureAsPNG(signature);
-  };
+  const handleDownload = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      downloadSignatureAsPNG(signature);
+    },
+    [signature]
+  );
 
-  const handleUserForForgery = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    toggleUserForForgery(signature as SignatureGenuine);
-    setUserForForgery(prev => !prev);
-  };
+  const handleUserForForgery = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      const genuineSignature = signature.data as SignatureGenuine;
+      setUserForForgeryLoading(true);
+      toggleUserForForgery(genuineSignature)
+        .then(newState => {
+          genuineSignature.user_for_forgery = newState;
+          setUserForForgery(newState);
+        })
+        .finally(() => {
+          setUserForForgeryLoading(false);
+        });
+    },
+    [signature]
+  );
 
-  const handleModForForgery = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    toggleModForForgery(signature as SignatureGenuine);
-    setModForForgery(prev => !prev);
-  };
+  const handleModForForgery = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      const genuineSignature = signature.data as SignatureGenuine;
+      setModForForgeryLoading(true);
+      toggleModForForgery(genuineSignature)
+        .then(newState => {
+          genuineSignature.mod_for_forgery = newState;
+          setModForForgery(newState);
+        })
+        .finally(() => {
+          setModForForgeryLoading(false);
+        });
+    },
+    [signature]
+  );
 
-  const handleModForDataset = (e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    toggleModForDataset(signature);
-    setModForDataset(prev => !prev);
-  };
+  const handleModForDataset = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      setModForDatasetLoading(true);
+      toggleModForDataset(signature)
+        .then(newState => {
+          signature.data.mod_for_dataset = newState;
+          setModForDataset(newState);
+        })
+        .finally(() => {
+          setModForDatasetLoading(false);
+        });
+    },
+    [signature]
+  );
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    deleteSignature(signature).then(success => {
-      if (success) {
-        setDeleted(true);
-      }
-    });
-  };
+  const handleDelete = useCallback(
+    (e?: React.MouseEvent) => {
+      e?.stopPropagation();
+      deleteSignature(signature).then(success => {
+        if (success) {
+          setDeleted(true);
+        }
+      });
+    },
+    [signature]
+  );
+
+  // Кнопки-хуки
+  const openSignatureButton = useOpenSignatureButton(signature);
+  const downloadSignatureButton = useDownloadSignatureButton(handleDownload);
+  const userForForgeryButton = useUserForForgeryButton(
+    userForForgery,
+    handleUserForForgery,
+    userForForgeryLoading
+  );
+  const modForForgeryButton = useModForForgeryButton(
+    modForForgery,
+    handleModForForgery,
+    modForForgeryLoading
+  );
+  const modForDatasetButton = useModForDatasetButton(
+    modForDataset,
+    handleModForDataset,
+    modForDatasetLoading
+  );
+  const deleteSignatureButton = useDeleteSignatureButton(handleDelete);
 
   const renderBadges = () => {
     if (isProfileLoading) {
@@ -189,31 +262,22 @@ export function SignaturePreview({
       );
     }
 
-    const isGenuine = isSignatureGenuine(signature);
-    const authenticityBadge = BadgeFactory.authenticity(signature);
-
-    if (!isGenuine) {
-      return authenticityBadge;
-    }
-
-    const genuineSignature = signature as SignatureGenuine;
-    const userForForgeryBadge = BadgeFactory.userForForgery(genuineSignature);
-
+    const isGenuine = signature.type === 'genuine';
     if (isCurrentUserMod) {
-      const userId =
-        'user_id' in signature
-          ? signature.user_id
-          : 'original_user_id' in signature
-            ? signature.original_user_id
-            : undefined;
+      const owner = getGenuineSignatureOwnerId(
+        signature.data as SignatureGenuine
+      );
+      const userId = owner?.id ?? null;
       if (userId === currentUserId) {
         // Мод видит свою подпись
         return (
           <>
             {authenticityBadge}
-            {userForForgeryBadge}
-            {!modForForgery && BadgeFactory.modForForgery(genuineSignature)}
-            {!modForDataset && BadgeFactory.modForDataset(signature)}
+            {isGenuine && userForForgeryBadge}
+            {isGenuine &&
+              !(userForForgery && modForForgery) &&
+              modForForgeryBadge}
+            {!modForDataset && modForDatasetBadge}
           </>
         );
       }
@@ -221,29 +285,18 @@ export function SignaturePreview({
       return (
         <>
           {authenticityBadge}
-          {userForForgery && modForForgery && (
-            <Badge
-              variant='green'
-              tooltip='Разрешено использование как примера для подделки'
-            >
-              Публичная
-            </Badge>
-          )}
-          {!userForForgery && (
-            <Badge
-              variant='yellow'
-              tooltip='Запрещено использование как примера для подделки'
-            >
-              Скрыта пользователем
-            </Badge>
-          )}
-          {!modForForgery && BadgeFactory.modForForgery(genuineSignature)}
-          {!modForDataset && BadgeFactory.modForDataset(signature)}
+          {isGenuine && !modForForgery && modForForgeryBadge}
+          {!modForDataset && modForDatasetBadge}
         </>
       );
     }
     // Пользователь видит свою подпись
-    return userForForgeryBadge;
+    return (
+      <>
+        {authenticityBadge}
+        {isGenuine && userForForgeryBadge}
+      </>
+    );
   };
 
   const renderButtons = () => {
@@ -255,158 +308,40 @@ export function SignaturePreview({
       );
     }
 
+    const isGenuine = signature.type === 'genuine';
     if (isCurrentUserMod) {
-      const userId =
-        'user_id' in signature
-          ? signature.user_id
-          : 'original_user_id' in signature
-            ? signature.original_user_id
-            : undefined;
+      const userId = getSignatureOwnerId(signature);
       if (userId === currentUserId) {
         // Мод видит свою подпись
         return (
           <>
-            <Button
-              size='icon'
-              variant='outline'
-              onClick={handleDownload}
-              title='Скачать'
-            >
-              <Download size={24} />
-            </Button>
-
-            {signatureType === 'genuine' && (
-              <ToggleButton
-                size='icon'
-                variant='secondary'
-                title={userForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-                iconOn={Eye}
-                iconOff={EyeOff}
-                iconSize={24}
-                isToggled={userForForgery}
-                onToggledChange={() => handleUserForForgery()}
-              />
-            )}
-
-            {signatureType === 'genuine' && (
-              <ToggleButton
-                size='icon'
-                variant='secondary'
-                title={modForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-                iconOn={ShieldCheck}
-                iconOff={ShieldX}
-                iconSize={24}
-                isToggled={modForForgery}
-                onToggledChange={() => handleModForForgery()}
-              />
-            )}
-
-            <ToggleButton
-              size='icon'
-              variant='secondary'
-              title={
-                modForDataset ? 'Исключить из датасета' : 'Включить в датасет'
-              }
-              iconOn={Database}
-              iconOff={Ban}
-              iconSize={24}
-              isToggled={modForDataset}
-              onToggledChange={() => handleModForDataset()}
-            />
-
-            <Button
-              size='icon'
-              variant='destructive'
-              onClick={handleDelete}
-              title='Удалить'
-            >
-              <X size={24} />
-            </Button>
+            {openSignatureButton}
+            {downloadSignatureButton}
+            {isGenuine && userForForgeryButton}
+            {isGenuine && modForForgeryButton}
+            {modForDatasetButton}
+            {deleteSignatureButton}
           </>
         );
       }
       // Мод видит чужую подпись
       return (
         <>
-          <Button
-            size='icon'
-            variant='outline'
-            onClick={handleDownload}
-            title='Скачать'
-          >
-            <Download size={24} />
-          </Button>
-
-          {signatureType === 'genuine' && (
-            <ToggleButton
-              size='icon'
-              variant='secondary'
-              title={modForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-              iconOn={ShieldCheck}
-              iconOff={ShieldX}
-              iconSize={24}
-              isToggled={modForForgery}
-              onToggledChange={() => handleModForForgery()}
-            />
-          )}
-
-          <ToggleButton
-            size='icon'
-            variant='secondary'
-            title={
-              modForDataset ? 'Исключить из датасета' : 'Включить в датасет'
-            }
-            iconOn={Database}
-            iconOff={Ban}
-            iconSize={24}
-            isToggled={modForDataset}
-            onToggledChange={() => handleModForDataset()}
-          />
-
-          <Button
-            size='icon'
-            variant='destructive'
-            onClick={handleDelete}
-            title='Удалить'
-          >
-            <X size={24} />
-          </Button>
+          {openSignatureButton}
+          {downloadSignatureButton}
+          {isGenuine && modForForgeryButton}
+          {modForDatasetButton}
+          {deleteSignatureButton}
         </>
       );
     }
     // Пользователь видит свою подпись
     return (
       <>
-        <Button
-          size='icon'
-          variant='secondary'
-          onClick={handleDownload}
-          title='Скачать'
-        >
-          <Download size={24} />
-        </Button>
-
-        {signatureType === 'genuine' && (
-          <ToggleButton
-            size='icon'
-            variant='secondary'
-            title={userForForgery ? 'Сделать скрытой' : 'Сделать публичной'}
-            iconOn={Eye}
-            iconOff={EyeOff}
-            iconSize={24}
-            isToggled={userForForgery}
-            onToggledChange={() => handleUserForForgery()}
-          />
-        )}
-
-        <Button
-          size='icon'
-          variant='destructive'
-          onClick={handleDelete}
-          title='Удалить'
-        >
-          <X size={24} />
-        </Button>
+        {openSignatureButton}
+        {downloadSignatureButton}
+        {isGenuine && userForForgeryButton}
+        {deleteSignatureButton}
       </>
     );
   };
@@ -443,9 +378,10 @@ export function SignaturePreview({
           ))
         ) : (
           <>
-            <div>ID: {signature.id.slice(0, 8)}...</div>
+            <div>ID: {signature.data.id.slice(0, 8)}...</div>
             <div>
-              Создана: {new Date(signature.created_at).toLocaleDateString()}
+              Создана:{' '}
+              {new Date(signature.data.created_at).toLocaleDateString()}
             </div>
           </>
         )}

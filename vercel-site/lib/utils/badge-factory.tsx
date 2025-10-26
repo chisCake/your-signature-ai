@@ -1,10 +1,10 @@
-import React from 'react';
-import { Signature, SignatureGenuine, isSignatureGenuine } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import { Signature, SignatureGenuine } from '@/lib/types';
+import React from 'react';
 
 export class BadgeFactory {
   static authenticity(signature: Signature): React.ReactElement {
-    const isGenuine = isSignatureGenuine(signature);
+    const isGenuine = signature.type === 'genuine';
     return isGenuine ? (
       <Badge variant='default' tooltip='Подпись является настоящей'>
         Настоящая
@@ -58,7 +58,7 @@ export class BadgeFactory {
     signature: Signature,
     showInDataset: boolean = false
   ): React.ReactElement {
-    const modForDataset = signature.mod_for_dataset ?? false;
+    const modForDataset = signature.data.mod_for_dataset ?? false;
     return modForDataset ? (
       showInDataset ? (
         <Badge variant='green' tooltip='Подпись участвует в датасете'>

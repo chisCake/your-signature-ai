@@ -1,15 +1,21 @@
 import { confirm } from '@/components/ui/alert-dialog';
 import { toast } from '@/components/ui/toast';
 import {
+  InsertForgedSignatureData,
+  InsertGenuineSignatureData,
+} from '@/lib/supabase/queries';
+import {
+  InputType,
   Signature,
+  SignatureForged,
   SignatureGenuine,
   SignaturePoint,
-  isSignatureGenuine,
+  UserType,
 } from '@/lib/types';
 
 export interface BaseSaveOptions {
   points: SignaturePoint[];
-  inputType?: 'mouse' | 'touch' | 'pen';
+  inputType?: InputType;
   userForForgery?: boolean;
   endpoint?: string;
 }
@@ -123,7 +129,7 @@ export function downloadSignatureAsPNG(
   if (!pngData) return;
 
   const link = document.createElement('a');
-  link.download = filename || `signature-${signature.id}.png`;
+  link.download = filename || `signature-${signature.data.id}.png`;
   link.href = pngData;
   link.click();
 }
@@ -186,7 +192,7 @@ export function formatSignatureDate(
   signature: Signature,
   locale: string = 'ru-RU'
 ): string {
-  return new Date(signature.created_at).toLocaleDateString(locale);
+  return new Date(signature.data.created_at).toLocaleDateString(locale);
 }
 
 /**
@@ -196,7 +202,7 @@ export function formatSignatureDateTime(
   signature: Signature,
   locale: string = 'ru-RU'
 ): string {
-  return new Date(signature.created_at).toLocaleString(locale);
+  return new Date(signature.data.created_at).toLocaleString(locale);
 }
 
 /**
@@ -206,7 +212,7 @@ export function getShortSignatureId(
   signature: Signature,
   length: number = 8
 ): string {
-  return signature.id.slice(0, length) + '...';
+  return signature.data.id.slice(0, length) + '...';
 }
 
 // ===== Сохранение подписи =====
@@ -267,9 +273,14 @@ export async function saveForAnotherSignature({
   }
 }
 
+/**
+ * Переключает видимость подписи для подделки со стороны пользователя
+ * @param signature подпись для переключения
+ * @returns новое состояние видимости подписи для подделки
+ */
 export async function toggleUserForForgery(
   signature: SignatureGenuine
-): Promise<void> {
+): Promise<boolean> {
   try {
     const res = await fetch(`/api/signatures/${signature.id}?type=genuine`, {
       method: 'PATCH',
@@ -282,7 +293,7 @@ export async function toggleUserForForgery(
         description: msg.error || 'Ошибка изменения видимости подписи',
         type: 'background',
       });
-      return;
+      return signature.user_for_forgery;
     }
 
     // Сообщаем другим компонентам о том, что подпись была обновлена
@@ -295,12 +306,19 @@ export async function toggleUserForForgery(
   } catch (error) {
     console.error('Network error while toggling user_for_forgery', error);
     toast({ description: 'Ошибка сети при обновлении', type: 'background' });
+    return signature.user_for_forgery;
   }
+  return !signature.user_for_forgery;
 }
 
+/**
+ * Переключает видимость подписи для подделки со стороны модератора
+ * @param signature подпись для переключения
+ * @returns новое состояние видимости подписи для подделки
+ */
 export async function toggleModForForgery(
   signature: SignatureGenuine
-): Promise<void> {
+): Promise<boolean> {
   try {
     const res = await fetch(`/api/signatures/${signature.id}?type=genuine`, {
       method: 'PATCH',
@@ -313,7 +331,7 @@ export async function toggleModForForgery(
         description: msg.error || 'Ошибка изменения видимости подписи',
         type: 'background',
       });
-      return;
+      return signature.mod_for_forgery;
     }
 
     const { mod_for_forgery } = await res.json();
@@ -325,17 +343,27 @@ export async function toggleModForForgery(
   } catch (error) {
     console.error('Network error while toggling mod_for_forgery', error);
     toast({ description: 'Ошибка сети при обновлении', type: 'background' });
+    return signature.mod_for_forgery;
   }
+  return !signature.mod_for_forgery;
 }
 
-export async function toggleModForDataset(signature: Signature): Promise<void> {
-  const signatureType = isSignatureGenuine(signature) ? 'genuine' : 'forged';
+/**
+ * Переключает видимость подписи для датасета
+ * @param signature подпись для переключения
+ * @returns новое состояние видимости подписи для датасета
+ */
+export async function toggleModForDataset(
+  signature: Signature
+): Promise<boolean> {
   try {
     const res = await fetch(
-      `/api/signatures/${signature.id}?type=${signatureType}`,
+      `/api/signatures/${signature.data.id}?type=${signature.type}`,
       {
         method: 'PATCH',
-        body: JSON.stringify({ modForDataset: !signature.mod_for_dataset }),
+        body: JSON.stringify({
+          modForDataset: !signature.data.mod_for_dataset,
+        }),
       }
     );
 
@@ -345,19 +373,21 @@ export async function toggleModForDataset(signature: Signature): Promise<void> {
         description: msg.error || 'Ошибка изменения видимости подписи',
         type: 'background',
       });
-      return;
+      return signature.data.mod_for_dataset;
     }
 
     const { mod_for_dataset } = await res.json();
     window.dispatchEvent(
       new CustomEvent('signatureUpdated', {
-        detail: { id: signature.id, mod_for_dataset },
+        detail: { id: signature.data.id, mod_for_dataset },
       })
     );
   } catch (error) {
     console.error('Network error while toggling mod_for_dataset', error);
     toast({ description: 'Ошибка сети при обновлении', type: 'background' });
+    return signature.data.mod_for_dataset;
   }
+  return !signature.data.mod_for_dataset;
 }
 
 /**
@@ -375,12 +405,13 @@ export async function deleteSignature(signature: Signature): Promise<boolean> {
   });
   if (!ok) return false;
 
-  const type = isSignatureGenuine(signature) ? 'genuine' : 'forged';
-
   try {
-    const res = await fetch(`/api/signatures/${signature.id}?type=${type}`, {
-      method: 'DELETE',
-    });
+    const res = await fetch(
+      `/api/signatures/${signature.data.id}?type=${signature.type}`,
+      {
+        method: 'DELETE',
+      }
+    );
 
     if (!res.ok) {
       const msg = await res.json().catch(() => ({}));
@@ -394,7 +425,7 @@ export async function deleteSignature(signature: Signature): Promise<boolean> {
     // Сообщаем другим компонентам о том, что подпись была удалена
     window.dispatchEvent(
       new CustomEvent('signatureDeleted', {
-        detail: { id: signature.id, type: type },
+        detail: { id: signature.data.id, type: signature.type },
       })
     );
     return true;
@@ -412,22 +443,7 @@ export function pointsToCSV(points: SignaturePoint[]): string {
 }
 
 export function csvToPoints(signature: Signature): SignaturePoint[] {
-  // Проверяем, есть ли features_table (новый формат)
-  if ('features_table' in signature && signature.features_table) {
-    return csvStringToPoints(signature.features_table);
-  }
-
-  // Старый формат с csv_header и csv_rows
-  const sig = signature as { csv_header?: string; csv_rows?: string };
-  // const header = (sig.csv_header || "").trim();
-  const rows = (sig.csv_rows || '').trim();
-  // const expected = "t,x,y,p";
-  // допускаем другие заголовки, но пытаемся распарсить по порядку t,x,y,p
-  const lines = rows.length ? rows.split('\n') : [];
-  return lines.map((line: string) => {
-    const [t, x, y, p] = line.split(',').map(Number);
-    return { timestamp: t, x, y, pressure: p } as SignaturePoint;
-  });
+  return csvStringToPoints(signature.data.features_table);
 }
 
 /**
@@ -448,4 +464,113 @@ export function csvStringToPoints(csvString: string): SignaturePoint[] {
   });
 
   return result;
+}
+
+/**
+ * Получает id владельца подписи
+ * @param signature подпись из которой следует получить владельца
+ * @returns { string | null } id владельца подписи, если подпись из внешнего датасета/источника, то null
+ */
+export function getSignatureOwnerId(signature: Signature): string | null {
+  if (signature.type === 'genuine') {
+    if (!signature.data.user_id && !signature.data.pseudouser_id) {
+      return null;
+    }
+    return (
+      (signature.data.user_id as string) ||
+      (signature.data.pseudouser_id as string)
+    );
+  } else {
+    if (!signature.data.forger_id) {
+      return null;
+    }
+    return signature.data.forger_id;
+  }
+}
+
+/**
+ * Получает id и тип владельца подлинной подписи
+ * @param signature подпись из которой следует получить владельца
+ * @returns { id: string, type: UserType } | null
+ */
+export function getGenuineSignatureOwnerId(
+  signature: SignatureGenuine
+): { id: string; type: UserType } | null {
+  if (signature.user_id) {
+    return { id: signature.user_id, type: 'user' };
+  } else if (signature.pseudouser_id) {
+    return { id: signature.pseudouser_id, type: 'pseudouser' };
+  } else {
+    return null;
+  }
+}
+
+/**
+ * Получает id владельца поддельной подписи
+ * @param signature подпись из которой следует получить владельца
+ * @returns { string | null } id владельца поддельной подписи
+ */
+export function getForgedSignatureOwnerId(
+  signature: SignatureForged
+): string | null {
+  return signature.forger_id ?? null;
+}
+
+// Подпись принадлежит настоящему пользователю или псевдопользователю
+export function isSignatureBelongsToProfile(signature: Signature): boolean {
+  return signature.type === 'genuine'
+    ? signature.data.user_id !== null
+    : signature.data.original_user_id !== null;
+}
+
+export function prepareGenuineSignatureDataForInsert(
+  genuineSignatureData: SignaturePoint[],
+  inputType: InputType,
+  userId: string | null = null,
+  pseudouserId: string | null = null,
+  userForForgery: boolean = false,
+  modForForgery: boolean = true,
+  modForDataset: boolean = true
+): InsertGenuineSignatureData {
+  if (!userId && !pseudouserId) {
+    throw new Error('User or pseudouser id is required');
+  }
+  if (userId && pseudouserId) {
+    throw new Error('Only one of user or pseudouser id is allowed');
+  }
+
+  return {
+    user_id: userId || undefined,
+    pseudouser_id: pseudouserId || undefined,
+    features_table: pointsToCSV(genuineSignatureData),
+    input_type: inputType,
+    user_for_forgery: userForForgery,
+    mod_for_forgery: modForForgery,
+    mod_for_dataset: modForDataset,
+  };
+}
+
+export function prepareForgedSignatureDataForInsert(
+  genuineSignature: SignatureGenuine,
+  originalUserId: string | null = null,
+  originalPseudouserId: string | null = null,
+  forgedSignatureData: SignaturePoint[],
+  inputType: InputType,
+  modForDataset: boolean
+): InsertForgedSignatureData {
+  if (!originalUserId && !originalPseudouserId) {
+    throw new Error('Original user or pseudouser id is required');
+  }
+  if (originalUserId && originalPseudouserId) {
+    throw new Error('Only one of original user or pseudouser id is allowed');
+  }
+
+  return {
+    original_signature_id: genuineSignature.id,
+    original_user_id: originalUserId,
+    original_pseudouser_id: originalPseudouserId,
+    features_table: pointsToCSV(forgedSignatureData),
+    input_type: inputType,
+    mod_for_dataset: modForDataset,
+  } as InsertForgedSignatureData;
 }

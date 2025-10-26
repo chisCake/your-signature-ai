@@ -1,25 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import CreateSignatureSection from '@/components/signature/signature-creation-section';
+import { SignatureList } from '@/components/signature/signature-list';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { UserSearchDropdown } from '@/components/user/user-search-dropdown';
+import { usePageTitle } from '@/lib/hooks/use-page-title';
+import {
+  Signature,
+  User,
+  createPseudouserUser,
+  getUserName,
+  mapToSignature,
+} from '@/lib/types';
 import {
   ensurePseudouser,
   getUserGenuineSignatures,
 } from '@/lib/utils/mod-client-utils';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { SignatureList } from '@/components/signature/signature-list';
-import {
-  User,
-  SignatureGenuine,
-  createPseudouserUser,
-  getUserName,
-  isProfile,
-  isPseudouser,
-} from '@/lib/types';
-import CreateSignatureSection from '@/components/signature/signature-creation-section';
 import { saveForAnotherSignature } from '@/lib/utils/signature-utils';
-import { Badge } from '@/components/ui/badge';
+import { useCallback, useEffect, useState } from 'react';
 
 const CANVAS_SIZE = `w-[560px] h-[420px]
                    sm:w-[580px] sm:h-[435px]
@@ -28,12 +28,14 @@ const CANVAS_SIZE = `w-[560px] h-[420px]
                    xl:w-[580px] xl:h-[435px]`;
 
 export default function ControlledSignatureAddition() {
+  usePageTitle({ title: 'Контроллируемое добавление подписей' });
+
   const [message, setMessage] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [latestQuery, setLatestQuery] = useState<string>('');
   const [latestResults, setLatestResults] = useState<User[]>([]);
   const [inputChanged, setInputChanged] = useState<boolean>(false);
-  const [signatures, setSignatures] = useState<SignatureGenuine[]>([]);
+  const [signatures, setSignatures] = useState<Signature[]>([]);
   const [signaturesLoading, setSignaturesLoading] = useState<boolean>(false);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const exactPseudouserExists = latestResults.some(
@@ -50,7 +52,7 @@ export default function ControlledSignatureAddition() {
     getUserGenuineSignatures(selectedUser.data.id, selectedUser.type)
       .then(result => {
         // console.log("setting signatures", result.length);
-        setSignatures(result);
+        setSignatures(result.map(mapToSignature));
       })
       .catch(error => {
         console.error('Error fetching signatures:', error);
@@ -146,7 +148,7 @@ export default function ControlledSignatureAddition() {
                 >
                   {selectedUser.type === 'user' ? 'Пользователь' : 'Псевдо'}
                 </Badge>
-                {isProfile(selectedUser) && (
+                {selectedUser.type === 'user' && (
                   <Badge variant='outline'>{selectedUser.data.role}</Badge>
                 )}
               </div>
@@ -159,7 +161,7 @@ export default function ControlledSignatureAddition() {
                   'ru-RU'
                 )}
               </div>
-              {isPseudouser(selectedUser) && (
+              {selectedUser.type === 'pseudouser' && (
                 <div className='text-muted-foreground text-xs'>
                   Источник: {selectedUser.data.source}
                 </div>
@@ -197,7 +199,9 @@ export default function ControlledSignatureAddition() {
                     selectedUser.data.id,
                     selectedUser.type
                   )
-                    .then(setSignatures)
+                    .then(result => {
+                      setSignatures(result.map(mapToSignature));
+                    })
                     .catch(console.error);
                 }
               }}

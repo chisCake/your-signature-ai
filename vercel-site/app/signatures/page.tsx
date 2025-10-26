@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DateFilter, DateFilterValue } from '@/components/ui/date-filter';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/toast';
+import { usePageTitle } from '@/lib/hooks/use-page-title';
 import { createBrowserClient } from '@/lib/supabase/client';
 import {
   getForgedSignatures,
@@ -14,7 +15,7 @@ import {
   getGenuineSignaturesAmount,
   searchSignature,
 } from '@/lib/supabase/queries';
-import { Signature } from '@/lib/types';
+import { mapToSignature, Signature } from '@/lib/types';
 import {
   ChevronFirst,
   ChevronLast,
@@ -39,6 +40,8 @@ function getPageNumbers(current: number, total: number, max = 5): number[] {
 }
 
 export default function SignaturesPage() {
+  usePageTitle({ title: 'Обзор подписей' });
+
   // Category genuine | forged
   const [category, setCategory] = useState<'genuine' | 'forged'>('genuine');
   // Pagination
@@ -126,7 +129,7 @@ export default function SignaturesPage() {
           }
         })();
         setTotalCount(count);
-        setSignatures(list);
+        setSignatures(list.map(mapToSignature));
       } catch (e) {
         console.error(e);
         toast({ description: 'Ошибка загрузки подписей', type: 'foreground' });
@@ -185,7 +188,7 @@ export default function SignaturesPage() {
 
       // Удаляем подпись из локального состояния
       setSignatures(prevSignatures =>
-        prevSignatures.filter(signature => signature.id !== deletedId)
+        prevSignatures.filter(signature => signature.data.id !== deletedId)
       );
 
       // Обновляем общее количество

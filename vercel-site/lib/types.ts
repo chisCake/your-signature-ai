@@ -1,6 +1,29 @@
 export type UserRole = 'user' | 'mod' | 'admin';
 export type UserType = 'user' | 'pseudouser';
 export type SignatureType = 'genuine' | 'forged';
+export type InputType = 'mouse' | 'touch' | 'pen';
+
+/**
+ * Объединенный тип для подписей
+ * @type { 'genuine' | 'forged' } type - тип подписи
+ * @type { SignatureGenuine | SignatureForged } data - данные подписи
+ * @see Genuine {@link SignatureGenuine}
+ * @see Forged {@link SignatureForged}
+ */
+export type Signature =
+  | { type: 'genuine'; data: SignatureGenuine }
+  | { type: 'forged'; data: SignatureForged };
+
+/**
+ * Объединенный тип для пользователей
+ * @type { 'user' | 'pseudouser' } type - тип пользователя
+ * @type { Profile | Pseudouser } data - данные пользователя
+ * @see Profile {@link Profile}
+ * @see Pseudouser {@link Pseudouser}
+ */
+export type User =
+  | { type: 'user'; data: Profile }
+  | { type: 'pseudouser'; data: Pseudouser };
 
 // Типы для векторных данных подписи
 export interface SignaturePoint {
@@ -59,15 +82,6 @@ export interface Pseudouser {
   updated_at: string;
 }
 
-/**
- * Объединенный тип для пользователей
- * @type { 'user' | 'pseudouser' } type - тип пользователя
- * @type { Profile | Pseudouser } data - данные пользователя
- */
-export type User =
-  | { type: 'user'; data: Profile }
-  | { type: 'pseudouser'; data: Pseudouser };
-
 // Таблица models
 export interface Model {
   id: string;
@@ -86,7 +100,7 @@ export interface Model {
  * @type { string } id - id подписи
  * @type { string | null } user_id - id пользователя
  * @type { string | null } pseudouser_id - id псевдопользователя
- * @type { string } features_table - название таблицы признаков
+ * @type { string } features_table - csv данные подписи
  * @type { 'mouse' | 'touch' | 'pen' | undefined } input_type - тип ввода
  * @type { boolean } user_for_forgery - флаг пользователя для использования в качестве образца для подделки
  * @type { boolean } mod_for_forgery - флаг модератора для использования в качестве образца для подделки
@@ -109,7 +123,22 @@ export interface SignatureGenuine {
   updated_at: string;
 }
 
-// Таблица forged_signatures
+/**
+ * Таблица forged_signatures
+ * @type { string } id - id поддельной подписи
+ * @type { string | null } original_signature_id - id оригинальной подписи
+ * @type { string | null } original_user_id - id пользователя оригинальной подписи
+ * @type { string | null } original_pseudouser_id - id псевдопользователя оригинальной подписи
+ * @type { string } features_table - csv данные подписи
+ * @type { 'mouse' | 'touch' | 'pen' | undefined } input_type - тип ввода
+ * @type { boolean } mod_for_dataset - флаг модератора для использования в датасете обучения
+ * @type { number | undefined } score - оценка поддельной подписи
+ * @type { string | undefined } model_id - id модели
+ * @type { string | undefined } forger_id - id пользователя, который создал поддельную подпись
+ * @type { string | undefined } name - имя поддельной подписи
+ * @type { string } created_at - дата создания поддельной подписи
+ * @type { string } updated_at - дата последнего обновления поддельной подписи
+ */
 export interface SignatureForged {
   id: string;
   original_signature_id?: string;
@@ -125,9 +154,6 @@ export interface SignatureForged {
   created_at: string;
   updated_at: string;
 }
-
-// Объединенный тип для подписей
-export type Signature = SignatureGenuine | SignatureForged;
 
 // Таблица embeddings
 export interface Embedding {
@@ -163,39 +189,21 @@ export interface AdminToken {
   revoked: boolean;
 }
 
-// ========================================
-// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ТИПОВ
-// ========================================
-
-// Type guards для определения типа пользователя
-export function isProfile(user: User): user is { type: 'user'; data: Profile } {
-  return user.type === 'user';
-}
-
-export function isPseudouser(
-  user: User
-): user is { type: 'pseudouser'; data: Pseudouser } {
-  return user.type === 'pseudouser';
-}
-
-// Type guards для определения типа подписи
-export function isSignatureGenuine(
-  signature: Signature
-): signature is SignatureGenuine {
-  return !isSignatureForged(signature);
-}
-
-export function isSignatureForged(
-  signature: Signature
-): signature is SignatureForged {
-  return (
+// Преобразование SignatureGenuine | SignatureForged в Signature
+export function mapToSignature(
+  signature: SignatureGenuine | SignatureForged
+): Signature {
+  if (
     'original_signature_id' in signature ||
     'original_user_id' in signature ||
     'original_pseudouser_id' in signature
-  );
+  ) {
+    return { type: 'forged', data: signature as SignatureForged };
+  } else {
+    return { type: 'genuine', data: signature as SignatureGenuine };
+  }
 }
 
-// Вспомогательные функции для создания объектов User
 export function createProfileUser(profile: Profile): User {
   return { type: 'user', data: profile };
 }
@@ -204,30 +212,21 @@ export function createPseudouserUser(pseudouser: Pseudouser): User {
   return { type: 'pseudouser', data: pseudouser };
 }
 
+export function createGenuineSignature(signature: SignatureGenuine): Signature {
+  return { type: 'genuine', data: signature };
+}
+
+export function createForgedSignature(signature: SignatureForged): Signature {
+  return { type: 'forged', data: signature };
+}
+
 // Функции для получения имени пользователя
 export function getUserName(user: User): string {
-  if (isProfile(user)) {
-    return user.data.display_name;
-  } else {
-    return user.data.name;
-  }
+  return user.type === 'user' ? user.data.display_name : user.data.name;
 }
 
 export function getUserId(user: User): string {
   return user.data.id;
-}
-
-export function getSignatureOwnerId(signature: Signature): string | null {
-  return isSignatureGenuine(signature)
-    ? (signature.user_id ?? null)
-    : (signature.forger_id ?? null);
-}
-
-// Подпись принадлежит настоящему пользователю или псевдопользователю
-export function isSignatureBelongsToProfile(signature: Signature): boolean {
-  return isSignatureGenuine(signature)
-    ? signature.user_id !== null
-    : signature.original_user_id !== null;
 }
 
 // ========================================

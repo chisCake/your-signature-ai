@@ -1,14 +1,20 @@
 'use client';
 
-import { useUser } from '@/lib/hooks/use-user';
-import { ThemeSwitcher } from '@/components/layout/theme-switcher';
 import { AuthButton } from '@/components/auth/auth-button';
-import { DashboardList } from '@/components/dashboard/dashboard-list';
 import { ActionPageList } from '@/components/dashboard/dashboard-action-list';
+import { DashboardList } from '@/components/dashboard/dashboard-list';
+import { ThemeSwitcher } from '@/components/layout/theme-switcher';
+import type { User } from '@supabase/supabase-js';
 
-export function MobileNavigationContent() {
-  const { user, loading } = useUser();
+interface MobileNavigationContentProps {
+  user: User | null;
+  loading: boolean;
+}
 
+export function MobileNavigationContent({
+  user,
+  loading,
+}: MobileNavigationContentProps) {
   if (loading) {
     return (
       <div className='space-y-3'>

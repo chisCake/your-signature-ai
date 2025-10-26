@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from '@/components/ui/toast';
 import { createBrowserClient } from '@/lib/supabase/client';
 import {
   getProfile as getProfileQuery,
@@ -8,24 +9,30 @@ import {
   getPseudousers as getPseudousersQuery,
   getUserGenuineSignatures as getUserGenuineSignaturesQuery,
   getUsers as getUsersQuery,
+  insertForgedSignature,
   insertPseudouser,
   profilesPrefixSearch,
   profilesSubstrSearch,
   pseudousersPrefixSearch,
   pseudousersSubstrSearch,
+  searchUser,
 } from '@/lib/supabase/queries';
 import {
+  InputType,
   Profile,
   Pseudouser,
   Signature,
+  SignatureForged,
   SignatureGenuine,
+  SignaturePoint,
   User,
   UserType,
   createProfileUser,
   createPseudouserUser,
   getUserName,
-  isSignatureGenuine,
 } from '@/lib/types';
+import { getUser } from './auth-client-utils';
+import { prepareForgedSignatureDataForInsert } from './signature-utils';
 
 export function formatModSearchLabel(item: User): string {
   return getUserName(item);
@@ -88,8 +95,8 @@ export async function getUserGenuineSignatures(
   const client = createBrowserClient();
   const signatures = await getUserGenuineSignaturesQuery(
     userId,
-    client,
-    userType
+    userType,
+    client
   );
   return signatures;
 }
@@ -154,30 +161,67 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   return profile;
 }
 
-/**
- * Получает владельца подписи
- * @param signature подпись из которой следует получить владельца
- * @returns Владельца {@link User} подписи или null, если подпись из внешнего датасета/источника
- */
 export async function getSignatureOwner(
   signature: Signature
 ): Promise<User | null> {
-  const client = createBrowserClient();
-  if (isSignatureGenuine(signature)) {
-    const ownerId = signature.user_id;
-    if (!ownerId) {
-      // Подпись из внешнего датасета
-      return null;
-    }
-    const ownerProfile = await getProfileQuery(ownerId, client);
-    return ownerProfile ? createProfileUser(ownerProfile) : null;
-  } else {
-    const ownerId = signature.forger_id;
-    if (!ownerId) {
-      // Подпись из внешнего датасета
-      return null;
-    }
-    const ownerPseudouser = await getPseudouser(ownerId, client);
-    return ownerPseudouser ? createPseudouserUser(ownerPseudouser) : null;
+  try {
+    return signature.type === 'genuine'
+      ? getGenuineSignatureOwner(signature.data as SignatureGenuine)
+      : getForgedSignatureOwner(signature.data as SignatureForged);
+  } catch (error) {
+    console.error(error);
+    toast({ description: (error as Error).message });
+    return null;
   }
+}
+
+export async function getGenuineSignatureOwner(
+  signature: SignatureGenuine
+): Promise<User | null> {
+  const client = createBrowserClient();
+
+  if (signature.user_id) {
+    const user = await getProfileQuery(signature.user_id, client);
+    if (!user) return null;
+
+    return createProfileUser(user);
+  } else if (signature.pseudouser_id) {
+    const pseudouser = await getPseudouser(signature.pseudouser_id, client);
+    if (!pseudouser) return null;
+
+    return createPseudouserUser(pseudouser);
+  }
+
+  return null;
+}
+
+export async function getForgedSignatureOwner(
+  signature: SignatureForged
+): Promise<User | null> {
+  const client = createBrowserClient();
+  if (!signature.forger_id) return null;
+
+  return await searchUser(signature.forger_id, client);
+}
+
+export async function saveForgery(
+  originalSignature: SignatureGenuine,
+  forgedSignatureData: SignaturePoint[],
+  inputType: InputType,
+  modForDataset: boolean
+): Promise<SignatureForged | null> {
+  const user = await getUser();
+  if (!user) return null;
+
+  const forgedSignature = prepareForgedSignatureDataForInsert(
+    originalSignature,
+    user.id,
+    null,
+    forgedSignatureData,
+    inputType,
+    modForDataset
+  );
+
+  const client = createBrowserClient();
+  return await insertForgedSignature(forgedSignature, client);
 }
