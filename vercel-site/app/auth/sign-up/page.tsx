@@ -1,4 +1,9 @@
 import { SignUpForm } from '@/components/forms/sign-up-form';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Регистрация | Your Sign AI',
+};
 
 export default function Page() {
   return (

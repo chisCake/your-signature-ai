@@ -5,7 +5,6 @@ import {
 import {
   createProfileUser,
   createPseudouserUser,
-  isSignatureGenuine,
   Profile,
   Signature,
   User,
@@ -41,8 +40,8 @@ export async function getSignatureOwner(
   signature: Signature,
   client: SupabaseClient
 ): Promise<User | null> {
-  if (isSignatureGenuine(signature)) {
-    const ownerId = signature.user_id;
+  if (signature.type === 'genuine') {
+    const ownerId = signature.data.user_id;
     if (!ownerId) {
       // Подпись из внешнего датасета
       return null;
@@ -50,7 +49,7 @@ export async function getSignatureOwner(
     const ownerProfile = await getProfileQuery(ownerId, client);
     return ownerProfile ? createProfileUser(ownerProfile) : null;
   } else {
-    const ownerId = signature.forger_id;
+    const ownerId = signature.data.forger_id;
     if (!ownerId) {
       // Подпись из внешнего датасета
       return null;

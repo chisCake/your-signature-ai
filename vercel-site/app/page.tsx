@@ -1,18 +1,18 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import SignatureDisplay from '@/components/signature/signature-display';
-import { useState, useEffect, useRef } from 'react';
-import { SignaturePoint } from '@/lib/types';
 import Canvas, { CanvasRef } from '@/components/signature/canvas';
-import { LoaderCircle, PenLine, RotateCcw } from 'lucide-react';
-import { csvStringToPoints } from '@/lib/utils/signature-utils';
+import { ComparisonResultModal } from '@/components/signature/comparison-result-modal';
+import SignatureDisplay from '@/components/signature/signature-display';
+import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import {
-  useInferenceServer,
   ForgeryAnalysisResponse,
+  useInferenceServer,
 } from '@/lib/inference-client';
-import { ComparisonResultModal } from '@/components/signature/comparison-result-modal';
+import { SignaturePoint } from '@/lib/types';
+import { csvStringToPoints } from '@/lib/utils/signature-utils';
+import { LoaderCircle, PenLine, RotateCcw } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 // Адаптивные размеры холста для мобильных устройств
 const CANVAS_SIZE_MOBILE = 'w-[280px] h-[210px] sm:w-[320px] sm:h-[240px]';
@@ -156,7 +156,7 @@ export default function Home() {
             <h2 className='text-lg sm:text-xl font-semibold text-center'>
               Оригинальная подпись
             </h2>
-            <div className='bg-card rounded-lg p-4 shadow-sm border'>
+            <div className='canvas-container'>
               <SignatureDisplay
                 signatureData={signatureData}
                 disablePlayButton={true}
@@ -193,7 +193,7 @@ export default function Home() {
             <h2 className='text-lg sm:text-xl font-semibold text-center'>
               Воспроизведите подпись
             </h2>
-            <div className='bg-card rounded-lg p-4 shadow-sm border'>
+            <div className='canvas-container'>
               <Canvas
                 ref={canvasRef}
                 canvasClassName={`${CANVAS_SIZE_MOBILE} ${CANVAS_SIZE_DESKTOP}`}

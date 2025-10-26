@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { User, getUserName, isProfile, isPseudouser } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UserIcon, LoaderCircle } from 'lucide-react';
+import { User, getUserName } from '@/lib/types';
+import { LoaderCircle, UserIcon } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 export interface UserPreviewField {
   key: string;
@@ -116,12 +116,12 @@ export function UserList({
                   >
                     {user.type === 'user' ? 'Пользователь' : 'Псевдо'}
                   </Badge>
-                  {isProfile(user) && (
+                  {user.type === 'user' && (
                     <Badge variant='outline' className='text-xs'>
                       {user.data.role}
                     </Badge>
                   )}
-                  {isPseudouser(user) && (
+                  {user.type === 'pseudouser' && (
                     <Badge variant='outline' className='text-xs'>
                       {user.data.source}
                     </Badge>

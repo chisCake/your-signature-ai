@@ -75,7 +75,8 @@ export async function DELETE(
 
 /**
  * Изменяет поле userForForgery, modForForgery или modForDataset настоящей/поддельной подписи
- * @param req - запрос с параметром ?type={signatureType}
+ * @param req - запрос с параметром ?type={signatureType} и телом json с полями userForForgery, modForForgery, modForDataset, если поле не указано, то оно не изменяется.
+ * **В json должно указываться только одно поле за запрос**
  * @param params - параметры
  * @returns ответ
  */
@@ -133,7 +134,7 @@ export async function PATCH(
       );
       if (!success) {
         return NextResponse.json(
-          { error: 'Database update failed' },
+          { error: 'Database update failed for userForForgery' },
           { status: 500 }
         );
       }
@@ -156,10 +157,12 @@ export async function PATCH(
       );
       if (!success) {
         return NextResponse.json(
-          { error: 'Database update failed' },
+          { error: 'Database update failed for modForForgery' },
           { status: 500 }
         );
       }
+
+      return NextResponse.json({ success: true });
     }
 
     if (modForDataset !== null) {
@@ -172,7 +175,7 @@ export async function PATCH(
 
       if (!success) {
         return NextResponse.json(
-          { error: 'Database update failed' },
+          { error: 'Database update failed for modForDataset' },
           { status: 500 }
         );
       }
@@ -190,6 +193,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
   } catch (error) {
     console.error('[PATCH] error', error);
+    console.trace();
     return NextResponse.json({ error: 'Unexpected error' }, { status: 500 });
   }
 }

@@ -1,16 +1,17 @@
 'use client';
 
-import React, {
-  useRef,
-  useEffect,
-  useCallback,
-  memo,
-  useState,
-  useMemo,
-} from 'react';
-import { SignaturePoint } from '@/lib/types';
-import { RotateCcw, LoaderCircle } from 'lucide-react';
 import { DEFAULT_CANVAS_SIZE } from '@/components/signature/canvas';
+import { Signature, SignaturePoint } from '@/lib/types';
+import { csvToPoints } from '@/lib/utils/signature-utils';
+import { LoaderCircle, RotateCcw } from 'lucide-react';
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 // Палитра цветов для множественных подписей (до 8 цветов)
 const SIGNATURE_COLORS = [
@@ -25,7 +26,11 @@ const SIGNATURE_COLORS = [
 ];
 
 interface SignatureDisplayProps {
-  signatureData: SignaturePoint[] | SignaturePoint[][]; // Поддержка одной или множественных подписей
+  signatureData:
+    | Signature
+    | Signature[]
+    | SignaturePoint[]
+    | SignaturePoint[][]; // Поддержка одной или множественных подписей
   width?: number;
   height?: number;
   className?: string;
@@ -72,11 +77,45 @@ const SignatureDisplay = memo(
     ) => {
       const [isLoading, setIsLoading] = useState(true);
 
-      // Нормализуем данные - всегда работаем с массивом массивов
+      // Проверяем тип данных и конвертируем в нужный формат
       const normalizedData = useMemo(() => {
-        return Array.isArray(signatureData[0])
-          ? (signatureData as SignaturePoint[][])
-          : [signatureData as SignaturePoint[]];
+        // Проверяем, является ли первый элемент Signature или SignaturePoint
+        if (!signatureData) return [];
+
+        // Если это массив массивов SignaturePoint
+        if (Array.isArray(signatureData) && signatureData.length > 0) {
+          const first = signatureData[0];
+
+          // Проверяем, является ли это массивом SignaturePoint[] (а не Signature)
+          if (Array.isArray(first)) {
+            // Это SignaturePoint[][]
+            return signatureData as SignaturePoint[][];
+          } else if ('data' in first && 'features_table' in first.data) {
+            // Это Signature[] - массив Signature объектов
+            return (signatureData as Signature[]).map(sig => csvToPoints(sig));
+          } else if ('x' in first && 'y' in first) {
+            // Это SignaturePoint[] - массив точек
+            return [signatureData as SignaturePoint[]];
+          }
+        }
+
+        // Если это одиночный Signature
+        if ('data' in signatureData && 'features_table' in signatureData.data) {
+          return [csvToPoints(signatureData as Signature)];
+        }
+
+        // Проверка для одиночного SignaturePoint[]
+        // Это должно быть массивом с элементами, имеющими x, y, timestamp, pressure
+        if (
+          Array.isArray(signatureData) &&
+          signatureData.length > 0 &&
+          'x' in signatureData[0] &&
+          'timestamp' in signatureData[0]
+        ) {
+          return [signatureData as SignaturePoint[]];
+        }
+
+        return [];
       }, [signatureData]);
 
       // Нормализуем цвета
@@ -299,11 +338,25 @@ const SignatureDisplay = memo(
         const currentTime = Date.now();
         const elapsed = (currentTime - startTimeRef.current) * animationSpeed;
 
-        // Вычисляем общую длительность всех подписей
+        // Вычисляем общую длительность всех подписей на основе реальных timestamp'ов
         const allPoints = normalizedData.flat();
-        const totalDuration = allPoints[allPoints.length - 1]?.timestamp || 0;
-        const progress = Math.min(elapsed / totalDuration, 1);
-        const targetPointIndex = Math.floor(progress * (totalPoints - 1));
+
+        // Находим первую точку для определения начального timestamp
+        const firstPoint = allPoints[0];
+        const startTimestamp = firstPoint?.timestamp || 0;
+
+        // Вычисляем, какая точка должна быть отрисована сейчас
+        // на основе прошедшего времени и реальных временных интервалов
+        let targetPointIndex = 0;
+        for (let i = 1; i < allPoints.length; i++) {
+          // Время от начала подписи до текущей точки
+          const pointTime = allPoints[i].timestamp - startTimestamp;
+          if (elapsed >= pointTime) {
+            targetPointIndex = i;
+          } else {
+            break;
+          }
+        }
 
         // Убеждаемся, что рисуем точки последовательно
         if (targetPointIndex > currentPointRef.current) {
@@ -312,7 +365,12 @@ const SignatureDisplay = memo(
         }
 
         // Если анимация завершена, но еще не все точки нарисованы, дорисовываем их
-        if (progress >= 1 && currentPointRef.current < totalPoints - 1) {
+        const lastPointTime =
+          allPoints[allPoints.length - 1]?.timestamp - startTimestamp || 0;
+        if (
+          elapsed >= lastPointTime &&
+          currentPointRef.current < totalPoints - 1
+        ) {
           currentPointRef.current = totalPoints - 1;
           drawSignature(ctx, normalizedData, currentPointRef.current);
         }
@@ -397,7 +455,7 @@ const SignatureDisplay = memo(
 
       // Управление состоянием загрузки
       useEffect(() => {
-        if (signatureData && signatureData.length > 0) {
+        if (signatureData && normalizedData.length > 0) {
           // Небольшая задержка для плавного перехода
           const timer = setTimeout(() => {
             setIsLoading(false);
@@ -406,7 +464,7 @@ const SignatureDisplay = memo(
         } else {
           setIsLoading(true);
         }
-      }, [signatureData]);
+      }, [signatureData, normalizedData]);
 
       // Инициализация и обновление canvas
       useEffect(() => {
@@ -516,7 +574,7 @@ const SignatureDisplay = memo(
               />
               {!disablePlayButton && (
                 <button
-                  className='absolute top-2 right-2 md:top-4 md:right-4 w-8 h-8 md:w-10 md:h-10 border-none rounded-full bg-blue-500 text-white text-base font-bold cursor-pointer flex items-center justify-center transition-all duration-200 shadow-md z-10 hover:bg-blue-600 hover:shadow-lg'
+                  className='absolute top-2 right-2 md:top-4 md:right-4 w-8 h-8 md:w-10 md:h-10 border-none rounded-full bg-blue-500 text-white text-base font-bold cursor-pointer flex items-center justify-center transition-all duration-200 shadow-md hover:bg-blue-600 hover:shadow-lg'
                   onClick={() => {
                     const canvas = canvasRef.current;
                     if (canvas) {

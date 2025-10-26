@@ -167,6 +167,10 @@
     }
   }
 
+  .canvas-container {
+    @apply bg-card rounded-lg p-4 shadow-sm border w-min h-min flex items-center justify-center;
+  }
+
   /* DayPicker стили для адаптации к теме */
   .rdp-root {
     --rdp-accent-color: hsl(var(--primary)) !important;

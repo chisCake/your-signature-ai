@@ -1,8 +1,8 @@
 import { createBrowserClient } from '@/lib/supabase/client';
-import { Signature } from '@/lib/types';
 import { getUserGenuineSignatures } from '@/lib/supabase/queries';
+import { SignatureGenuine } from '@/lib/types';
 
-export async function getSignatures(): Promise<Signature[]> {
+export async function getGenuineSignatures(): Promise<SignatureGenuine[]> {
   try {
     const client = createBrowserClient();
     const { data } = await client.auth.getClaims();
@@ -11,7 +11,7 @@ export async function getSignatures(): Promise<Signature[]> {
       throw new Error('User ID not found');
     }
 
-    const signatures = await getUserGenuineSignatures(userId, client, 'user');
+    const signatures = await getUserGenuineSignatures(userId, 'user', client);
     return signatures;
   } catch (error) {
     console.error('Error getting signatures:', error);

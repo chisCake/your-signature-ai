@@ -6,10 +6,10 @@
 
 'use server';
 
+import { createServerClient } from '@/lib/supabase/server';
 import { Profile, Signature, User, UserRole } from '@/lib/types';
 import { getUserProfile } from '@/lib/utils/auth-server-utils';
 import { getSignatureOwner } from '@/lib/utils/client-utils';
-import { createServerClient } from '@/lib/supabase/server';
 
 // ========================================
 // Система политик для управления подписями
@@ -91,14 +91,6 @@ function ModAndAdminGeneralPermissions(
     (userRole === 'admin' && signatureBelongsToUserOrMod(owner)) ||
     (userRole === 'mod' && signatureBelongsToUser(owner))
   );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function userHasAccessToExternalSignatures(
-  userRole: UserRole,
-  owner: User | null
-): boolean {
-  return owner === null && (userRole === 'mod' || userRole === 'admin');
 }
 
 function userIsOwner(user: Profile, owner: User): boolean {

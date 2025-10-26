@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, memo } from 'react';
-import { SignatureGenuine, SignatureForged } from '@/lib/types';
-import { SignaturePreview } from '@/components/signature/signature-preview';
 import { SignatureModal } from '@/components/signature/signature-modal';
+import { SignaturePreview } from '@/components/signature/signature-preview';
+import { Signature } from '@/lib/types';
 import { LoaderCircle } from 'lucide-react';
+import { memo, useState } from 'react';
 
 export interface PreviewField {
   key: string;
   label: string;
-  getValue: (signature: SignatureGenuine | SignatureForged) => string;
+  getValue: (signature: Signature) => string;
 }
 
 interface SignatureListProps {
-  signatures: (SignatureGenuine | SignatureForged)[];
+  signatures: Signature[];
   loading?: boolean;
   previewFields?: PreviewField[];
   emptyStateTitle?: string;
@@ -29,12 +29,12 @@ export const SignatureList = memo(function SignatureList({
   emptyStateDescription = '',
   showHeader = true,
 }: SignatureListProps) {
-  const [selectedSignature, setSelectedSignature] = useState<
-    SignatureGenuine | SignatureForged | null
-  >(null);
+  const [selectedSignature, setSelectedSignature] = useState<Signature | null>(
+    null
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleOpenModal = (signature: SignatureGenuine | SignatureForged) => {
+  const handleOpenModal = (signature: Signature) => {
     setSelectedSignature(signature);
     setIsModalOpen(true);
   };
@@ -78,7 +78,7 @@ export const SignatureList = memo(function SignatureList({
       <div className='grid grid-cols-1 mt-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
         {signatures.map(signature => (
           <SignaturePreview
-            key={signature.id}
+            key={signature.data.id}
             signature={signature}
             previewFields={previewFields}
             onOpenModal={handleOpenModal}

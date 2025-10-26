@@ -1,28 +1,29 @@
 'use client';
 
-import CreateSignatureSection from '@/components/signature/signature-creation-section';
-import { Button } from '@/components/ui/button';
 import { DashboardSection } from '@/components/dashboard/dashboard-section';
-import { Profile, Signature } from '@/lib/types';
+import CreateSignatureSection from '@/components/signature/signature-creation-section';
 import {
-  SignatureList,
   PreviewField,
+  SignatureList,
 } from '@/components/signature/signature-list';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/components/ui/toast';
+import { usePageTitle } from '@/lib/hooks/use-page-title';
+import { mapToSignature, Profile, Signature } from '@/lib/types';
+import { getUserProfile } from '@/lib/utils/auth-client-utils';
 import {
   formatSignatureDate,
   getShortSignatureId,
 } from '@/lib/utils/signature-utils';
+import { getGenuineSignatures } from '@/lib/utils/user-utils';
 import {
-  User as UserIcon,
-  Mail,
   Calendar,
-  Shield,
   LoaderCircle,
+  Mail,
+  Shield,
+  User as UserIcon,
 } from 'lucide-react';
-import { getSignatures } from '@/lib/utils/user-utils';
-import { getUserProfile } from '@/lib/utils/auth-client-utils';
-import { useState, useEffect, useCallback } from 'react';
-import { toast } from '@/components/ui/toast';
+import { useCallback, useEffect, useState } from 'react';
 
 const CANVAS_SIZE_MOBILE = 'w-[320px] h-[240px] sm:w-[320px] sm:h-[240px]';
 const CANVAS_SIZE_DESKTOP =
@@ -34,12 +35,14 @@ export default function UserDashboard() {
   const [currentUser, setCurrentUser] = useState<Profile | null>(null);
   const [userEmail, setUserEmail] = useState<string>('');
 
+  usePageTitle({ title: 'Личный кабинет' });
+
   // Загрузка подписей пользователя
   const fetchSignatures = useCallback(async () => {
     try {
       setSignaturesLoading(true);
-      const data = await getSignatures();
-      setSignatures(data || []);
+      const data = await getGenuineSignatures();
+      setSignatures(data.map(mapToSignature) || []);
     } catch (error) {
       console.error('Ошибка сети:', error);
     } finally {
@@ -104,7 +107,7 @@ export default function UserDashboard() {
         signatures.forEach(sig => {
           window.dispatchEvent(
             new CustomEvent('signatureUpdated', {
-              detail: { id: sig.id, user_for_forgery: allow },
+              detail: { id: sig.data.id, user_for_forgery: allow },
             })
           );
         });

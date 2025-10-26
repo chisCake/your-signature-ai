@@ -1,6 +1,6 @@
+import { FlatCompat } from '@eslint/eslintrc';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { FlatCompat } from '@eslint/eslintrc';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,6 +40,20 @@ const eslintConfig = [
             'CallExpression[callee.object.name="console"][callee.property.name="log"]',
           message:
             'console.log is not allowed. Use console.error for errors or remove for production.',
+        },
+      ],
+
+      // Import rules - запрет всех относительных импортов
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../**', '../../**', '../../../**', '../../../../**'],
+              message:
+                'Relative imports are not allowed. Use absolute imports with @/ alias instead.',
+            },
+          ],
         },
       ],
     },

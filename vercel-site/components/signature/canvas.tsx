@@ -1,16 +1,13 @@
 'use client';
 
+import { InputType, SignaturePoint } from '@/lib/types';
+import { Fingerprint, Mouse, Pen, X } from 'lucide-react';
 import React, {
-  useRef,
-  useCallback,
   forwardRef,
+  useCallback,
   useImperativeHandle,
+  useRef,
 } from 'react';
-import { SignaturePoint } from '@/lib/types';
-import { X, Mouse, Fingerprint, Pen } from 'lucide-react';
-
-// Типы ввода
-export type InputType = 'mouse' | 'touch' | 'pen' | null;
 
 // Локальные типы для Canvas компонента
 export interface CanvasRef {
@@ -18,7 +15,7 @@ export interface CanvasRef {
   getImageData: () => string | null;
   getCanvas: () => HTMLCanvasElement | null;
   getSignatureData: () => SignaturePoint[];
-  getInputType: () => InputType;
+  getInputType: () => InputType | null;
 }
 
 export const DEFAULT_CANVAS_SIZE = `w-[400px] h-[300px]
@@ -43,7 +40,7 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
     const startTimeRef = useRef<number>(0);
     const inputTypeRef = useRef<InputType>(null);
     const [currentInputType, setCurrentInputType] =
-      React.useState<InputType>(null);
+      React.useState<InputType | null>(null);
 
     // Функция для получения иконки в зависимости от типа ввода
     const getInputTypeIcon = useCallback((inputType: InputType) => {
@@ -88,7 +85,7 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
         return [...signatureDataRef.current];
       },
       getInputType: () => {
-        return inputTypeRef.current;
+        return inputTypeRef.current || null;
       },
     }));
 
@@ -178,7 +175,7 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
           timestamp,
           x,
           y,
-          pressure: 1.0, // Для мыши всегда максимальное давление
+          pressure: e.pressure || 0.5, // Для мыши всегда максимальное давление
           // для мыши не записываем tilt/azimuth
         });
       },
@@ -215,13 +212,22 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
 
       // Добавляем точку в данные подписи
       const currentTime = Date.now();
-      const timestamp = currentTime - startTimeRef.current;
+      let timestamp = currentTime - startTimeRef.current;
+
+      if (signatureDataRef.current.length > 0) {
+        const lastTimestamp =
+          signatureDataRef.current[signatureDataRef.current.length - 1]
+            .timestamp;
+        if (timestamp <= lastTimestamp) {
+          timestamp = lastTimestamp + 1; // Минимальный шаг 1 мс
+        }
+      }
 
       signatureDataRef.current.push({
         timestamp,
         x: currentX,
         y: currentY,
-        pressure: 1.0, // Для мыши всегда максимальное давление
+        pressure: e.pressure || 0.5,
         // для мыши не записываем tilt/azimuth
       });
 
@@ -313,7 +319,7 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
           onPointerCancel={stopDrawing}
         />
         <button
-          className='absolute top-2 right-2 md:top-4 md:right-4 w-8 h-8 md:w-10 md:h-10 border-none rounded-full bg-red-500 text-white text-base font-bold cursor-pointer flex items-center justify-center transition-all duration-200 shadow-md z-10 hover:bg-red-600 hover:scale-105 hover:shadow-lg active:scale-95'
+          className='absolute top-2 right-2 md:top-4 md:right-4 w-8 h-8 md:w-10 md:h-10 border-none rounded-full bg-red-500 text-white text-base font-bold cursor-pointer flex items-center justify-center transition-all duration-200 shadow-md hover:bg-red-600 hover:scale-105 hover:shadow-lg active:scale-95'
           onClick={handleClear}
           type='button'
           aria-label='Очистить холст'
@@ -323,7 +329,7 @@ const Canvas = forwardRef<CanvasRef, CanvasProps>(
 
         {/* Иконка типа ввода */}
         {showInputTypeIcon && currentInputType && (
-          <div className='absolute bottom-2 right-2 md:bottom-4 md:right-4 w-8 h-8 md:w-10 md:h-10 border-none rounded-full bg-secondary text-primary flex items-center justify-center transition-all duration-200 shadow-md z-10'>
+          <div className='absolute bottom-2 right-2 md:bottom-4 md:right-4 w-8 h-8 md:w-10 md:h-10 border-none rounded-full bg-secondary text-primary flex items-center justify-center transition-all duration-200 shadow-md'>
             {getInputTypeIcon(currentInputType)}
           </div>
         )}

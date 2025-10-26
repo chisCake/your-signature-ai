@@ -1,25 +1,11 @@
 'use client';
 
 import {
-  getUsers,
-  getPseudousers,
-  getUserGenuineSignatures,
-} from '@/lib/utils/mod-client-utils';
-import {
-  Profile,
-  Pseudouser,
-  User,
-  SignatureGenuine,
-  SignatureForged,
-  createProfileUser,
-  createPseudouserUser,
-  getUserName,
-  isProfile,
-  isPseudouser,
-} from '@/lib/types';
+  PreviewField,
+  SignatureList,
+} from '@/components/signature/signature-list';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { CheckboxWithLabel } from '@/components/ui/checkbox-with-label';
 import {
   Card,
   CardContent,
@@ -27,33 +13,49 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  SignatureList,
-  PreviewField,
-} from '@/components/signature/signature-list';
+import { CheckboxWithLabel } from '@/components/ui/checkbox-with-label';
+import { Input } from '@/components/ui/input';
 import { UserList } from '@/components/user/user-list';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { usePageTitle } from '@/lib/hooks/use-page-title';
 import {
-  LoaderCircle,
-  User as UserIcon,
-  Users,
-  Search,
-  Filter,
+  Profile,
+  Pseudouser,
+  SignatureForged,
+  SignatureGenuine,
+  User,
+  createProfileUser,
+  createPseudouserUser,
+  getUserName,
+  mapToSignature,
+} from '@/lib/types';
+import { getUserProfile } from '@/lib/utils/auth-client-utils';
+import {
+  getPseudousers,
+  getUserGenuineSignatures,
+  getUsers,
+} from '@/lib/utils/mod-client-utils';
+import {
+  Ban,
   Calendar,
-  Signature as SignatureIcon,
-  Mail,
-  Settings,
-  Shield,
   Database,
   Edit,
   ExternalLink,
+  Filter,
+  LoaderCircle,
+  Mail,
   PlusCircle,
-  Ban,
+  Search,
+  Settings,
+  Shield,
+  Signature as SignatureIcon,
+  User as UserIcon,
+  Users,
 } from 'lucide-react';
-import { getUserProfile } from '@/lib/utils/auth-client-utils';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export default function UsersPage() {
+  usePageTitle({ title: 'Обзор пользователей' });
+
   const [users, setUsers] = useState<Profile[]>([]);
   const [pseudousers, setPseudousers] = useState<Pseudouser[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -113,7 +115,7 @@ export default function UsersPage() {
     if (sources.length === 0) return byName;
 
     return byName.filter(user => {
-      if (isProfile(user)) return false;
+      if (user.type === 'user') return false;
       const userSource = user.data.source.toLowerCase();
       const match = sources.includes(userSource);
       return appliedSourceIncludeMode ? match : !match;
@@ -144,7 +146,7 @@ export default function UsersPage() {
       .finally(() => setSignaturesLoading(false));
 
     // Загружаем email только для обычных пользователей
-    if (isProfile(selectedUser)) {
+    if (selectedUser.type === 'user') {
       (async () => {
         fetch(`/api/users/${selectedUser.data.id}`)
           .then(res => res.json())
@@ -185,15 +187,15 @@ export default function UsersPage() {
     if (!selectedUser || !currentUser) return false;
 
     // Если это псевдопользователь, можно управлять
-    if (isPseudouser(selectedUser)) return true;
+    if (selectedUser.type === 'pseudouser') return true;
 
     // Если это обычный пользователь с ролью user, можно управлять
-    if (isProfile(selectedUser) && selectedUser.data.role === 'user')
+    if (selectedUser.type === 'user' && selectedUser.data.role === 'user')
       return true;
 
     // Если это модератор или админ, нельзя управлять
     if (
-      isProfile(selectedUser) &&
+      selectedUser.type === 'user' &&
       (selectedUser.data.role === 'mod' || selectedUser.data.role === 'admin')
     ) {
       return false;
@@ -206,7 +208,7 @@ export default function UsersPage() {
     if (!selectedUser || !currentUser) return false;
 
     // Проверяем только для обычных пользователей
-    if (isProfile(selectedUser)) {
+    if (selectedUser.type === 'user') {
       return selectedUser.data.id === currentUser.id;
     }
 
@@ -218,18 +220,18 @@ export default function UsersPage() {
     {
       key: 'id',
       label: 'ID',
-      getValue: signature => signature.id.slice(0, 8) + '...',
+      getValue: signature => signature.data.id.slice(0, 8) + '...',
     },
     {
       key: 'input_type',
       label: 'Тип ввода',
-      getValue: signature => signature.input_type || 'неизвестно',
+      getValue: signature => signature.data.input_type || 'неизвестно',
     },
     {
       key: 'created_at',
       label: 'Дата создания',
       getValue: signature =>
-        new Date(signature.created_at).toLocaleDateString('ru-RU'),
+        new Date(signature.data.created_at).toLocaleDateString('ru-RU'),
     },
   ];
 
@@ -411,7 +413,7 @@ export default function UsersPage() {
                               ? 'Обычный пользователь'
                               : 'Псевдопользователь'}
                           </Badge>
-                          {isProfile(selectedUser) && (
+                          {selectedUser.type === 'user' && (
                             <Badge variant='outline'>
                               {selectedUser.data.role}
                             </Badge>
@@ -443,7 +445,7 @@ export default function UsersPage() {
                           })}
                         </div>
                       </div>
-                      {isProfile(selectedUser) && (
+                      {selectedUser.type === 'user' && (
                         <div>
                           <label className='text-sm font-medium text-muted-foreground'>
                             Email
@@ -458,7 +460,7 @@ export default function UsersPage() {
                           </div>
                         </div>
                       )}
-                      {isPseudouser(selectedUser) && (
+                      {selectedUser.type === 'pseudouser' && (
                         <div>
                           <label className='text-sm font-medium text-muted-foreground'>
                             Источник
@@ -493,7 +495,7 @@ export default function UsersPage() {
                             Вы не можете изменять настройки этого профиля
                           </p>
                           <p className='text-sm'>
-                            {isProfile(selectedUser) &&
+                            {selectedUser.type === 'user' &&
                             (selectedUser.data.role === 'mod' ||
                               selectedUser.data.role === 'admin')
                               ? 'Управление профилями модераторов и администраторов ограничено'
@@ -587,7 +589,7 @@ export default function UsersPage() {
                               size='sm'
                               className='flex-1'
                             >
-                              {isProfile(selectedUser)
+                              {selectedUser.type === 'user'
                                 ? 'Изменить email'
                                 : 'Изменить источник'}
                             </Button>
@@ -627,7 +629,7 @@ export default function UsersPage() {
                   </CardHeader>
                   <CardContent>
                     <SignatureList
-                      signatures={userSignatures}
+                      signatures={userSignatures.map(mapToSignature)}
                       loading={signaturesLoading}
                       previewFields={signaturePreviewFields}
                       emptyStateTitle='У пользователя нет подписей'

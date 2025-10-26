@@ -1,24 +1,27 @@
 'use client';
 
-import * as React from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
+import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
+
+export type ConfirmVariant =
+  | 'default'
+  | 'confirm'
+  | 'destructive'
+  | 'outline'
+  | 'secondary'
+  | 'ghost'
+  | 'link';
 
 interface ConfirmOptions {
   title?: string;
   description?: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?:
-    | 'default'
-    | 'confirm'
-    | 'destructive'
-    | 'outline'
-    | 'secondary'
-    | 'ghost'
-    | 'link';
+  confirmVariant?: ConfirmVariant;
+  cancelVariant?: ConfirmVariant;
 }
 
 // expose promise-based confirm function
@@ -77,7 +80,10 @@ export const ConfirmDialogProvider: React.FC<{ children: React.ReactNode }> = ({
               )}
               <div className='flex justify-end gap-2'>
                 <AlertDialogPrimitive.Cancel asChild>
-                  <Button variant='outline' onClick={() => close(false)}>
+                  <Button
+                    variant={current.cancelVariant || 'outline'}
+                    onClick={() => close(false)}
+                  >
                     {current.cancelText || 'Отмена'}
                   </Button>
                 </AlertDialogPrimitive.Cancel>
