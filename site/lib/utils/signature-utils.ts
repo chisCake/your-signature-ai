@@ -12,6 +12,7 @@ import {
   SignaturePoint,
   UserType,
 } from '@/lib/types';
+import { getUser } from './auth-client-utils';
 
 export interface BaseSaveOptions {
   points: SignaturePoint[];
@@ -219,13 +220,19 @@ export function getShortSignatureId(
 export async function saveOwnSignature({
   points,
   inputType = 'mouse',
-  userForForgery: allowForForgery = false,
-  endpoint = '/api/signatures',
+  userForForgery = false,
 }: BaseSaveOptions): Promise<string> {
-  const csvData = pointsToCSV(points);
-  const body = { csvData, inputType, userForForgery: allowForForgery };
+  const user = await getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  const body = {
+    points,
+    inputType,
+    userForForgery,
+  };
 
-  const res = await fetch(endpoint, {
+  const res = await fetch('/api/signatures', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -243,22 +250,19 @@ export async function saveForAnotherSignature({
   points,
   inputType = 'mouse',
   userForForgery = false,
-  endpoint = '/api/signatures',
   targetTable,
   targetId,
 }: SaveForAnotherSignatureOptions): Promise<string> {
   try {
-    const csvData = pointsToCSV(points);
     const body = {
-      csvData,
+      points,
       inputType,
       userForForgery,
       targetTable,
       targetId,
     };
 
-    // console.log("body", body);
-    const res = await fetch(endpoint, {
+    const res = await fetch('/api/signatures', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
