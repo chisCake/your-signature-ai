@@ -8,7 +8,7 @@ from typing import Optional, List, Union
 import logging
 import torch
 import torch.nn.functional as F
-import numpy as np 
+import numpy as np
 
 # --- ИСПРАВЛЕННЫЙ ИМПОРТ ЗАВИСИМОСТЕЙ ---
 # Импортируем функции зависимостей из dependencies.py
@@ -23,32 +23,39 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/forgery-by-data", tags=["forgery-analysis"])
 
+
 class ForgeryByDataRequest(BaseModel):
     """Схема запроса для анализа подделки по данным."""
+
     original_id: str
-    forgery_data: Union[List[List[float]], str]  # CSV строка или список списков [t,x,y,p]
+    forgery_data: Union[
+        List[List[float]], str
+    ]  # CSV строка или список списков [t,x,y,p]
+
 
 class ForgeryAnalysisResponse(BaseModel):
     """Ответ с результатом анализа подделки"""
+
     is_forgery: bool
     similarity_score: float
     threshold: float
     error: Optional[str] = None
 
+
 @router.post("/", response_model=ForgeryAnalysisResponse)
 async def analyze_forgery_by_data(
-    request_body: ForgeryByDataRequest, 
+    request_body: ForgeryByDataRequest,
     supabase_client: SupabaseClient = Depends(get_supabase_client),
-    model_loader: ModelLoader = Depends(get_model_loader)
+    model_loader: ModelLoader = Depends(get_model_loader),
 ):
     """
     Анализ подделки по ID оригинальной подписи и данным поддельной подписи
-    
+
     Args:
         request_body: Валидированное тело запроса
         supabase_client: Клиент Supabase
         model_loader: Загрузчик модели
-    
+
     Returns:
         Результат анализа подделки
     """
@@ -63,7 +70,10 @@ async def analyze_forgery_by_data(
         # --- Шаг 1: Получение данных оригинальной подписи ---
         original_data = supabase_client.get_signature_data(original_id, "genuine")
         if not original_data:
-            raise HTTPException(status_code=404, detail=f"Original signature {original_id} not found in genuine signatures")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Original signature {original_id} not found in genuine signatures",
+            )
 
         # --- Шаг 2: Обработка данных поддельной подписи ---
         forgery_data: List[List[float]]
@@ -77,8 +87,12 @@ async def analyze_forgery_by_data(
             logger.info("Using forgery data as list of lists")
             forgery_data = request_body.forgery_data
 
-        if not forgery_data:
-            raise HTTPException(status_code=400, detail="Invalid forgery data provided or failed to parse")
+        # Проверка валидности данных (для numpy array используем len, для списка - обычную проверку)
+        if forgery_data is None or len(forgery_data) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid forgery data provided or failed to parse",
+            )
 
         # --- Шаг 3: Препроцессинг и подготовка тензоров ---
         original_features = v1_preprocess_signature_data(original_data)
@@ -93,7 +107,9 @@ async def analyze_forgery_by_data(
         forgery_embedding = model_loader.encode_signature(forgery_tensor)
 
         # Вычисляем косинусное сходство
-        similarity_score = float(F.cosine_similarity(original_embedding, forgery_embedding, dim=1))
+        similarity_score = float(
+            F.cosine_similarity(original_embedding, forgery_embedding, dim=1)
+        )
 
         # Определяем порог для подделки
         threshold = 0.75
@@ -101,12 +117,14 @@ async def analyze_forgery_by_data(
         # Определяем, является ли это подделкой
         is_forgery = similarity_score < threshold
 
-        logger.info(f"Analysis completed: similarity={similarity_score:.4f}, is_forgery={is_forgery}")
+        logger.info(
+            f"Analysis completed: similarity={similarity_score:.4f}, is_forgery={is_forgery}"
+        )
 
         result = ForgeryAnalysisResponse(
             is_forgery=is_forgery,
             similarity_score=similarity_score,
-            threshold=threshold
+            threshold=threshold,
         )
 
         logger.info(f"=== FORGERY BY DATA REQUEST SUCCESS ===")
@@ -120,6 +138,7 @@ async def analyze_forgery_by_data(
         logger.error(f"=== FORGERY BY DATA GENERAL ERROR ===")
         logger.error(f"Error analyzing forgery by data: {str(e)}")
         import traceback
+
         logger.error(f"Traceback: {traceback.format_exc()}")
 
         # Возвращаем структурированный ответ об ошибке
@@ -127,5 +146,5 @@ async def analyze_forgery_by_data(
             is_forgery=False,
             similarity_score=0.0,
             threshold=0.75,
-            error=f"Analysis failed: {type(e).__name__}: {str(e)}"
+            error=f"Analysis failed: {type(e).__name__}: {str(e)}",
         )

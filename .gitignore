@@ -1,15 +1,9 @@
 # Global .gitignore for Signature AI Project
 
 # ===========================================
-# Secrets
+# Secrets and Environment Variables
 # ===========================================
-
 secrets.json
-
-# ===========================================
-# Environment Variables
-# ===========================================
-
 .env
 .env.local
 .env.development.local
@@ -18,9 +12,8 @@ secrets.json
 supabase.env
 
 # ===========================================
-# Logs
+# Logs and Temporary Files
 # ===========================================
-
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -28,43 +21,73 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 logs/
+tmp/
+.tmp*/
+temp/
+uploads/
+.local/
+local/
 
 # ===========================================
-# Runtime Data
+# Databases
 # ===========================================
-
-pids
-*.pid
-*.seed
-*.pid.lock
+*.db
+*.sqlite
+*.sqlite3
 
 # ===========================================
-# Coverage and Testing
+# Editor Directories and Files
 # ===========================================
+.vscode/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.iml
+*.ipr
+*.iws
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+.cursor/
+*.mdc
+AGENTS_NOTES*.md
+.vercel/
 
-coverage/
-*.lcov
-.nyc_output
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-vercel-site/playwright-report/
-vercel-site/test-results/
-vercel-site/tests/e2e/storage/
+# ===========================================
+# OS Generated Files
+# ===========================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===========================================
+# Large Data Files
+# ===========================================
+/data/
+/runs/
+*.csv
+*.tsv
+*.jsonl
+*.parquet
+*.feather
+*.npy
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.joblib
 
 # ===========================================
 # Dependencies
 # ===========================================
-
 node_modules/
 jspm_packages/
 .pnp
@@ -91,297 +114,6 @@ jspm_packages/
 .yarn-integrity
 
 # ===========================================
-# Build Outputs
-# ===========================================
-
-# Next.js
-.next/
-out/
-build/
-
-# Nuxt.js
-.nuxt
-dist
-
-# Gatsby
-.cache/
-public
-
-# Storybook
-.out
-.storybook-out
-
-# Parcel
-.parcel-cache
-
-# ===========================================
-# Python
-# ===========================================
-
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# ===========================================
-# Machine Learning / Data Science
-# ===========================================
-
-# Model files
-*.pkl
-*.pickle
-*.h5
-*.hdf5
-*.joblib
-
-# Data files (large)
-*.csv
-*.tsv
-*.jsonl
-*.parquet
-*.feather
-*.npy
-
-# Large data directories
-/data/
-datasets/
-embeddings/
-checkpoints/
-
-# MLflow
-mlruns/
-
-# Weights & Biases
-wandb/
-
-# ===========================================
-# Databases
-# ===========================================
-
-*.db
-*.sqlite
-*.sqlite3
-
-# ===========================================
-# Supabase
-# ===========================================
-
-# Supabase local development
-supabase/.branches/*
-supabase/.temp/*
-
-# ===========================================
-# Docker
-# ===========================================
-
-# Docker volumes
-docker-data/
-.dockerignore
-docker-compose.override.yml
-
-# ===========================================
-# Temporary Files
-# ===========================================
-
-tmp/
-.tmp*/
-temp/
-uploads/
-.local/
-local/
-
-# ===========================================
-# Editor Directories and Files
-# ===========================================
-
-# VSCode
-.vscode/
-.vscode/settings.json
-.vscode/tasks.json
-.vscode/launch.json
-.vscode/extensions.json
-
-# JetBrains IDEs
-.idea/
-*.iml
-*.ipr
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
-*.swp
-*.swo
-*~
-
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-auto-save-list
-tramp
-.\#*
-
-# Cursor AI
-.cursor/
-*.mdc
-AGENTS_NOTES*.md
-
-# ===========================================
-# OS Generated Files
-# ===========================================
-
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# ===========================================
-# TypeScript
-# ===========================================
-
-*.tsbuildinfo
-next-env.d.ts
-
-# ===========================================
-# Vercel
-# ===========================================
-
-.vercel
-
-# ===========================================
 # Project Specific
 # ===========================================
-
-# Training data (large files)
-colab-training/data/
-colab-training/datasets/DeepSignDB/
-colab-training/datasets/SigComp/
-runs/
-copy_runs.ps1
-
-# Model artifacts
-colab-training/nn/*
-
-# Embeddings
-colab-training/data/emb/
-
-# Temporary files
-colab-training/data/tmp/
-vercel-site/data/tmp/
-
-colab-training/*.md
-
-# Build outputs
-vercel-site/.next/
-vercel-site/out/
-render-inference/build/
-render-inference/dist/
-
-# Backend specific
-render-inference/app/models/checkpoints/
-render-inference/app/logs/
-render-inference/model_cache/
-render-inference/embeddings_cache/
-
-# Frontend specific
-vercel-site/public/uploads/
-
-# Colab specific
-.colab/
-
-# Agent Notes (Cursor AI) - commented out for now
-# AGENTS_NOTES_*.md
-# TODO.md
-# *.agent.md
-
-# Temporary agent files
-.agent-temp/
-agent-cache/
+TODO.md
