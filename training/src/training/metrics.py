@@ -1,6 +1,9 @@
-# src/training/metrics.py
 import numpy as np
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import (
+    roc_curve,
+    roc_auc_score,
+)
+
 
 def compute_eer_auc(embeddings: np.ndarray, labels: np.ndarray):
     """
