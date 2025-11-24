@@ -41,27 +41,56 @@ def analyze_data(source: DataSource, **kwargs):
         from utils.supabase_io import create_client_with_login, fetch_all
 
         client = create_client_with_login(
-            kwargs["supabase_url"], kwargs["anon_key"], kwargs["email"], kwargs["password"]
+            kwargs["supabase_url"],
+            kwargs["anon_key"],
+            kwargs["email"],
+            kwargs["password"],
         )
 
-        for table, label in [("genuine_signatures", "genuine"), ("forged_signatures", "forged")]:
+        for table, label in [
+            ("genuine_signatures", "genuine"),
+            ("forged_signatures", "forged"),
+        ]:
+            if label == "genuine":
+                select_fields = "id,input_type,features_table,user_id,pseudouser_id"
+            else:  # forged
+                select_fields = "id,input_type,features_table,original_user_id,original_pseudouser_id"
+
             table_rows = fetch_all(
                 client,
                 table=table,
-                select="id,input_type,features_table",
+                select=select_fields,
                 filters=[["mod_for_dataset", "eq", True]],
             )
             for r in table_rows:
-                rows.append({
-                    "id": r["id"],
-                    "label": label,
-                    "input_type": r["input_type"],
-                    "csv": r["features_table"],
-                })
+                # Determine user identifier
+                if label == "genuine":
+                    user_id = r.get("user_id") or r.get("pseudouser_id")
+                    owner_table = "profiles" if r.get("user_id") else "pseudousers"
+                else:  # forged
+                    user_id = r.get("original_user_id") or r.get(
+                        "original_pseudouser_id"
+                    )
+                    owner_table = (
+                        "profiles" if r.get("original_user_id") else "pseudousers"
+                    )
+
+                rows.append(
+                    {
+                        "id": r["id"],
+                        "label": label,
+                        "input_type": r["input_type"],
+                        "csv": r["features_table"],
+                        "user_id": user_id,
+                        "owner_table": owner_table,
+                    }
+                )
 
     elif source == DataSource.LMDB:
         lmdb_path = kwargs["lmdb_path"]
-        lmdb_env = lmdb.open(lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048)
+        lmdb_env = lmdb.open(
+            lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048
+        )
         with lmdb_env.begin() as txn:
             index_bytes = txn.get(b"__index__")
             if index_bytes is None:
@@ -72,14 +101,26 @@ def analyze_data(source: DataSource, **kwargs):
                     continue
                 label_bytes = txn.get(f"{key}:label".encode("utf-8"))
                 input_type_bytes = txn.get(f"{key}:input_type".encode("utf-8"))
+                owner_id_bytes = txn.get(f"{key}:owner_id".encode("utf-8"))
+                owner_table_bytes = txn.get(f"{key}:owner_table".encode("utf-8"))
                 if label_bytes is None or input_type_bytes is None:
                     continue
-                rows.append({
-                    "id": key,
-                    "label": label_bytes.decode("utf-8"),
-                    "input_type": input_type_bytes.decode("utf-8"),
-                    "csv": csv_bytes.decode("utf-8"),
-                })
+                rows.append(
+                    {
+                        "id": key,
+                        "label": label_bytes.decode("utf-8"),
+                        "input_type": input_type_bytes.decode("utf-8"),
+                        "csv": csv_bytes.decode("utf-8"),
+                        "user_id": (
+                            owner_id_bytes.decode("utf-8") if owner_id_bytes else None
+                        ),
+                        "owner_table": (
+                            owner_table_bytes.decode("utf-8")
+                            if owner_table_bytes
+                            else None
+                        ),
+                    }
+                )
         lmdb_env.close()
     else:
         raise ValueError(f"Unsupported data source: {source}")
@@ -93,13 +134,27 @@ def analyze_data(source: DataSource, **kwargs):
     feature_maxs = {c: -np.inf for c in ["x", "y", "t", "p"]}
     all_t_values: List[float] = []
 
-    tag_stats: Dict[Tuple[str, str], List[int]] = defaultdict(list)  # (label,input_type)->seq lens
+    tag_stats: Dict[Tuple[str, str], List[int]] = defaultdict(
+        list
+    )  # (label,input_type)->seq lens
+
+    # User statistics
+    user_signatures: Dict[Tuple[str, str], Dict[str, int]] = defaultdict(
+        lambda: {"genuine": 0, "forged": 0}
+    )  # (owner_table, user_id) -> counts
 
     for r in rows:
         csv_str = r["csv"]
         seq_len = csv_str.count("\n")
         seq_lengths.append((seq_len, r))
         tag_stats[(r["label"], r["input_type"])].append(seq_len)
+
+        # Track user statistics
+        user_id = r.get("user_id")
+        owner_table = r.get("owner_table")
+        if user_id and owner_table:
+            user_key = (owner_table, user_id)
+            user_signatures[user_key][r["label"]] += 1
 
         # Parse CSV for feature ranges
         try:
@@ -139,6 +194,34 @@ def analyze_data(source: DataSource, **kwargs):
 
     overall_lengths = [l for l, _ in seq_lengths]
 
+    # Calculate user statistics
+    num_users = len(user_signatures)
+    genuine_counts = [stats["genuine"] for stats in user_signatures.values()]
+    forged_counts = [stats["forged"] for stats in user_signatures.values()]
+    total_counts = [
+        stats["genuine"] + stats["forged"] for stats in user_signatures.values()
+    ]
+
+    user_stats = {
+        "num_users": num_users,
+        "avg_genuine_per_user": (
+            float(np.mean(genuine_counts)) if genuine_counts else 0.0
+        ),
+        "median_genuine_per_user": (
+            float(np.median(genuine_counts)) if genuine_counts else 0.0
+        ),
+        "avg_forged_per_user": float(np.mean(forged_counts)) if forged_counts else 0.0,
+        "median_forged_per_user": (
+            float(np.median(forged_counts)) if forged_counts else 0.0
+        ),
+        "avg_total_per_user": float(np.mean(total_counts)) if total_counts else 0.0,
+        "median_total_per_user": (
+            float(np.median(total_counts)) if total_counts else 0.0
+        ),
+        "min_signatures_per_user": int(np.min(total_counts)) if total_counts else 0,
+        "max_signatures_per_user": int(np.max(total_counts)) if total_counts else 0,
+    }
+
     return {
         "metrics_df": metrics_df,
         "total_samples": len(seq_lengths),
@@ -159,38 +242,66 @@ def analyze_data(source: DataSource, **kwargs):
             "median_seq_len": np.median(overall_lengths),
             "std_seq_len": np.std(overall_lengths),
         },
-        "feature_ranges": {col: (feature_mins[col], feature_maxs[col]) for col in feature_mins},
+        "feature_ranges": {
+            col: (feature_mins[col], feature_maxs[col]) for col in feature_mins
+        },
         "median_t": float(np.median(all_t_values)) if all_t_values else None,
+        "user_stats": user_stats,
     }
 
 
 def print_supabase_report(supabase_results: Dict) -> None:
     """
     Print formatted analysis report for Supabase data.
-    
+
     Args:
         supabase_results: Results from analyze_supabase_data
     """
     print("=" * 60)
     print("📊 ОТЧЕТ ПО ДАННЫМ SUPABASE")
     print("=" * 60)
-    
+
     print("\nМетрики по категориям (label, input_type):")
     print("-" * 50)
     print(supabase_results["metrics_df"])
-    
+
     print(f"\nВсего образцов в БД: {supabase_results['total_samples']}")
-    print(f"Самая короткая подпись: {supabase_results['shortest_signature']['id']} "
-          f"(len={supabase_results['shortest_signature']['length']}, "
-          f"label={supabase_results['shortest_signature']['label']})")
-    print(f"Самая длинная подпись: {supabase_results['longest_signature']['id']} "
-          f"(len={supabase_results['longest_signature']['length']}, "
-          f"label={supabase_results['longest_signature']['label']})")
-    
+
+    # User statistics
+    user_stats = supabase_results.get("user_stats", {})
+    if user_stats:
+        print(f"\nСтатистика по пользователям:")
+        print(f"Количество пользователей: {user_stats['num_users']}")
+        print(
+            f"Genuine подписей на пользователя: среднее={user_stats['avg_genuine_per_user']:.1f}, медиана={user_stats['median_genuine_per_user']:.1f}"
+        )
+        print(
+            f"Forged подписей на пользователя: среднее={user_stats['avg_forged_per_user']:.1f}, медиана={user_stats['median_forged_per_user']:.1f}"
+        )
+        print(
+            f"Всего подписей на пользователя: среднее={user_stats['avg_total_per_user']:.1f}, медиана={user_stats['median_total_per_user']:.1f}"
+        )
+        print(
+            f"Диапазон: от {user_stats['min_signatures_per_user']} до {user_stats['max_signatures_per_user']} подписей на пользователя"
+        )
+
+    print(
+        f"\nСамая короткая подпись: {supabase_results['shortest_signature']['id']} "
+        f"(len={supabase_results['shortest_signature']['length']}, "
+        f"label={supabase_results['shortest_signature']['label']})"
+    )
+    print(
+        f"Самая длинная подпись: {supabase_results['longest_signature']['id']} "
+        f"(len={supabase_results['longest_signature']['length']}, "
+        f"label={supabase_results['longest_signature']['label']})"
+    )
+
     print(f"\nОбщая статистика:")
     print(f"Средняя длина: {supabase_results['overall_stats']['mean_seq_len']:.1f}")
     print(f"Медианная длина: {supabase_results['overall_stats']['median_seq_len']:.1f}")
-    print(f"Стандартное отклонение: {supabase_results['overall_stats']['std_seq_len']:.1f}")
+    print(
+        f"Стандартное отклонение: {supabase_results['overall_stats']['std_seq_len']:.1f}"
+    )
 
     print("\nДиапазоны координат и давлений:")
     for col, rng in supabase_results["feature_ranges"].items():
@@ -202,26 +313,45 @@ def print_supabase_report(supabase_results: Dict) -> None:
 def print_lmdb_report(lmdb_results: Dict) -> None:
     """
     Print formatted analysis report for LMDB data.
-    
+
     Args:
         lmdb_results: Results from analyze_lmdb_data
     """
     print("=" * 60)
     print("📊 ОТЧЕТ ПО ДАННЫМ LMDB")
     print("=" * 60)
-    
+
     print("\nМетрики по категориям (label, input_type):")
     print("-" * 50)
     print(lmdb_results["metrics_df"])
-    
+
     print(f"\nВсего образцов в LMDB: {lmdb_results['total_samples']}")
-    ss_short = lmdb_results['shortest_signature']
-    ss_long = lmdb_results['longest_signature']
-    short_id = ss_short.get('id', ss_short.get('key'))
-    long_id = ss_long.get('id', ss_long.get('key'))
-    print(f"Самая короткая подпись: {short_id} (len={ss_short['length']})")
+
+    # User statistics
+    user_stats = lmdb_results.get("user_stats", {})
+    if user_stats:
+        print(f"\nСтатистика по пользователям:")
+        print(f"Количество пользователей: {user_stats['num_users']}")
+        print(
+            f"Genuine подписей на пользователя: среднее={user_stats['avg_genuine_per_user']:.1f}, медиана={user_stats['median_genuine_per_user']:.1f}"
+        )
+        print(
+            f"Forged подписей на пользователя: среднее={user_stats['avg_forged_per_user']:.1f}, медиана={user_stats['median_forged_per_user']:.1f}"
+        )
+        print(
+            f"Всего подписей на пользователя: среднее={user_stats['avg_total_per_user']:.1f}, медиана={user_stats['median_total_per_user']:.1f}"
+        )
+        print(
+            f"Диапазон: от {user_stats['min_signatures_per_user']} до {user_stats['max_signatures_per_user']} подписей на пользователя"
+        )
+
+    ss_short = lmdb_results["shortest_signature"]
+    ss_long = lmdb_results["longest_signature"]
+    short_id = ss_short.get("id", ss_short.get("key"))
+    long_id = ss_long.get("id", ss_long.get("key"))
+    print(f"\nСамая короткая подпись: {short_id} (len={ss_short['length']})")
     print(f"Самая длинная подпись: {long_id} (len={ss_long['length']})")
-    
+
     print(f"\nОбщая статистика:")
     print(f"Средняя длина: {lmdb_results['overall_stats']['mean_seq_len']:.1f}")
     print(f"Медианная длина: {lmdb_results['overall_stats']['median_seq_len']:.1f}")
@@ -237,7 +367,7 @@ def print_lmdb_report(lmdb_results: Dict) -> None:
 def print_analysis_report(supabase_results: Dict, lmdb_results: Dict) -> None:
     """
     Print formatted analysis report comparing Supabase and LMDB data.
-    
+
     Args:
         supabase_results: Results from analyze_supabase_data
         lmdb_results: Results from analyze_lmdb_data
@@ -245,29 +375,47 @@ def print_analysis_report(supabase_results: Dict, lmdb_results: Dict) -> None:
     print("=" * 80)
     print("📈 СВОДНЫЙ ОТЧЕТ ПО АНАЛИЗУ ДАННЫХ ПОДПИСЕЙ")
     print("=" * 80)
-    
+
     # Вывод отчетов по отдельности
     print_supabase_report(supabase_results)
     print()
     print_lmdb_report(lmdb_results)
-    
+
     print("\n" + "=" * 80)
     print("📊 СРАВНИТЕЛЬНЫЙ АНАЛИЗ")
     print("=" * 80)
-    
+
     print(f"\nСравнение общих статистик:")
-    print(f"БД  - Средняя длина: {supabase_results['overall_stats']['mean_seq_len']:.1f}, "
-          f"Медианная длина: {supabase_results['overall_stats']['median_seq_len']:.1f}")
-    print(f"LMDB - Средняя длина: {lmdb_results['overall_stats']['mean_seq_len']:.1f}, "
-          f"Медианная длина: {lmdb_results['overall_stats']['median_seq_len']:.1f}")
-    
+    print(
+        f"БД  - Средняя длина: {supabase_results['overall_stats']['mean_seq_len']:.1f}, "
+        f"Медианная длина: {supabase_results['overall_stats']['median_seq_len']:.1f}"
+    )
+    print(
+        f"LMDB - Средняя длина: {lmdb_results['overall_stats']['mean_seq_len']:.1f}, "
+        f"Медианная длина: {lmdb_results['overall_stats']['median_seq_len']:.1f}"
+    )
+
     # Проверка на расхождения
-    db_count = supabase_results['total_samples']
-    lmdb_count = lmdb_results['total_samples']
+    db_count = supabase_results["total_samples"]
+    lmdb_count = lmdb_results["total_samples"]
     if db_count != lmdb_count:
-        print(f"\n⚠️  ВНИМАНИЕ: Несоответствие количества образцов! БД: {db_count}, LMDB: {lmdb_count}")
+        print(
+            f"\n⚠️  ВНИМАНИЕ: Несоответствие количества образцов! БД: {db_count}, LMDB: {lmdb_count}"
+        )
     else:
         print(f"\n✅ Количество образцов совпадает: {db_count} образцов")
+
+    # Сравнение пользователей
+    db_users = supabase_results.get("user_stats", {}).get("num_users", 0)
+    lmdb_users = lmdb_results.get("user_stats", {}).get("num_users", 0)
+    if db_users > 0 and lmdb_users > 0:
+        print(f"\nСравнение пользователей:")
+        print(f"БД  - Пользователей: {db_users}")
+        print(f"LMDB - Пользователей: {lmdb_users}")
+        if db_users != lmdb_users:
+            print(f"⚠️  ВНИМАНИЕ: Несоответствие количества пользователей!")
+        else:
+            print(f"✅ Количество пользователей совпадает")
 
 
 # ---------------------------------------------------------------------------
@@ -300,11 +448,15 @@ def plot_t_distribution(
     # Collect *duration* of each signature (max t value)
     durations: List[float] = []
 
-    env = lmdb.open(lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048)
+    env = lmdb.open(
+        lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048
+    )
     with env.begin() as txn:
         index_bytes = txn.get(b"__index__")
         if index_bytes is None:
-            raise RuntimeError("LMDB index not found; ensure the dataset is built correctly")
+            raise RuntimeError(
+                "LMDB index not found; ensure the dataset is built correctly"
+            )
         keys = [k for k in index_bytes.decode("utf-8").splitlines() if k]
 
         for key in keys:
@@ -344,6 +496,7 @@ def plot_t_distribution(
     plt.tight_layout()
     return fig
 
+
 # ---------------------------------------------------------------------------
 # Label-aware duration histogram
 # ---------------------------------------------------------------------------
@@ -370,7 +523,9 @@ def plot_t_distribution_by_label(
     # Gather durations per label
     durations_by_label: Dict[str, List[float]] = {"genuine": [], "forged": []}
 
-    env = lmdb.open(lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048)
+    env = lmdb.open(
+        lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048
+    )
     with env.begin() as txn:
         index_bytes = txn.get(b"__index__")
         if index_bytes is None:
@@ -420,8 +575,8 @@ def plot_t_distribution_by_label(
     lines = ["duration_ms,genuine_count,forged_count"]
     for i in range(len(text_bins) - 1):
         duration = int(text_bins[i])
-        genuine_count = int(text_counts['genuine'][i])
-        forged_count = int(text_counts['forged'][i])
+        genuine_count = int(text_counts["genuine"][i])
+        forged_count = int(text_counts["forged"][i])
         if genuine_count == 0 and forged_count == 0:
             continue
         lines.append(f"{duration},{genuine_count},{forged_count}")
@@ -431,7 +586,13 @@ def plot_t_distribution_by_label(
         fig, ax = plt.subplots(figsize=(10, 4))
         colors = {"genuine": "#2b8cbe", "forged": "#e34a33"}
         for lbl, data in durations_by_label.items():
-            ax.hist(data, bins=num_bins, alpha=0.6, label=f"{lbl} ({len(data)})", color=colors[lbl])
+            ax.hist(
+                data,
+                bins=num_bins,
+                alpha=0.6,
+                label=f"{lbl} ({len(data)})",
+                color=colors[lbl],
+            )
         ax.set_xlabel("Длительность подписи t (мс)")
         ax.set_ylabel("Количество подписей")
         ax.set_title("Распределение длительностей подписей по меткам")
@@ -440,7 +601,11 @@ def plot_t_distribution_by_label(
     else:
         fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
         for idx, lbl in enumerate(["genuine", "forged"]):
-            axes[idx].hist(durations_by_label[lbl], bins=num_bins, color="#2b8cbe" if lbl == "genuine" else "#e34a33")
+            axes[idx].hist(
+                durations_by_label[lbl],
+                bins=num_bins,
+                color="#2b8cbe" if lbl == "genuine" else "#e34a33",
+            )
             axes[idx].set_ylabel("Кол-во подписей")
             axes[idx].set_title(f"{lbl.capitalize()} ({len(durations_by_label[lbl])})")
             axes[idx].grid(True, linestyle=":", alpha=0.5)
@@ -448,6 +613,7 @@ def plot_t_distribution_by_label(
         plt.tight_layout()
 
     return fig, text_output
+
 
 # ---------------------------------------------------------------------------
 # Data quality checks
@@ -478,7 +644,9 @@ def find_untrimmed_signatures(
 
     problematic: List[Dict[str, any]] = []
 
-    env = lmdb.open(lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048)
+    env = lmdb.open(
+        lmdb_path, readonly=True, lock=False, readahead=True, max_readers=2048
+    )
     with env.begin() as txn:
         index_bytes = txn.get(b"__index__")
         if index_bytes is None:
@@ -495,7 +663,9 @@ def find_untrimmed_signatures(
                 continue  # empty
 
             values = rows[1:]
-            pressures = [float(r[3]) if len(r) >= 4 else pressure_zero_threshold for r in values]
+            pressures = [
+                float(r[3]) if len(r) >= 4 else pressure_zero_threshold for r in values
+            ]
             length = len(pressures)
 
             # Leading zeros
@@ -525,5 +695,3 @@ def find_untrimmed_signatures(
                 )
 
     return problematic
-
-
