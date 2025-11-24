@@ -321,6 +321,47 @@ export async function getForgedSignaturesAmount(
   return count || 0;
 }
 
+/**
+ * Получает статистику по типам ввода для всех подписей
+ * Использует оптимизированную RPC функцию для подсчета в БД
+ * @param client клиент Supabase
+ * @param dateFrom опциональная дата начала периода
+ * @param dateTo опциональная дата конца периода
+ * @returns объект с количеством подписей по каждому типу ввода
+ */
+export async function getInputTypeStats(
+  client?: SupabaseClient,
+  dateFrom?: Date,
+  dateTo?: Date
+): Promise<{ mouse: number; touch: number; pen: number }> {
+  const supabase = getClient(client);
+
+  const { data, error } = await supabase.rpc('get_input_type_stats', {
+    date_from: dateFrom?.toISOString() || null,
+    date_to: dateTo?.toISOString() || null,
+  });
+
+  if (error) {
+    console.error('Ошибка получения статистики по типам ввода:', error);
+    return { mouse: 0, touch: 0, pen: 0 };
+  }
+
+  const stats = {
+    mouse: 0,
+    touch: 0,
+    pen: 0,
+  };
+
+  // Преобразуем результат в нужный формат
+  data?.forEach((row: { input_type: string; count: number }) => {
+    if (row.input_type === 'mouse') stats.mouse = Number(row.count);
+    else if (row.input_type === 'touch') stats.touch = Number(row.count);
+    else if (row.input_type === 'pen') stats.pen = Number(row.count);
+  });
+
+  return stats;
+}
+
 // TODO: where profile/pseudouser, source for pseudouser
 export async function getGenuineSignatures(
   client?: SupabaseClient,

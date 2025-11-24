@@ -19,6 +19,7 @@ interface SignatureListProps {
   emptyStateTitle?: string;
   emptyStateDescription?: string;
   showHeader?: boolean;
+  fullWidth?: boolean;
 }
 
 export const SignatureList = memo(function SignatureList({
@@ -28,6 +29,7 @@ export const SignatureList = memo(function SignatureList({
   emptyStateTitle = 'Нет подписей для отображения',
   emptyStateDescription = '',
   showHeader = true,
+  fullWidth = false,
 }: SignatureListProps) {
   const [selectedSignature, setSelectedSignature] = useState<Signature | null>(
     null
@@ -64,7 +66,7 @@ export const SignatureList = memo(function SignatureList({
   }
 
   return (
-    <div className='xl:min-w-2xl'>
+    <div className={fullWidth ? 'w-full' : 'xl:min-w-2xl'}>
       {/* Заголовок с количеством */}
       {showHeader && (
         <div className='flex items-center justify-between mb-2'>
