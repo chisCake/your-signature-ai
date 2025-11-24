@@ -14,7 +14,7 @@ import numpy as np
 # Классы и функции из utils/
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
-from utils.preprocessing import v1_preprocess_signature_data
+from utils.preprocessing import preprocess_signature_data
 
 # --- Импорт функций-зависимостей из dependencies.py ---
 # Это устраняет циклический импорт, так как роутер импортирует только функции,
@@ -77,8 +77,12 @@ async def analyze_forgery_by_id(
 
         # --- Шаг 2: Препроцессинг и подготовка тензоров ---
         logger.info("Step 2: Preprocessing signature data")
-        original_features = v1_preprocess_signature_data(original_data)
-        forgery_features = v1_preprocess_signature_data(forgery_data)
+        # Определяем версию модели из model_loader
+        model_info = model_loader.get_model_info()
+        model_version = model_info.get("module", "models.v1").split(".")[-1] if "." in model_info.get("module", "") else "v1"
+        
+        original_features = preprocess_signature_data(original_data, model_version=model_version)
+        forgery_features = preprocess_signature_data(forgery_data, model_version=model_version)
         logger.info(f"Preprocessing completed. Original features shape: {original_features.shape}, Forgery features shape: {forgery_features.shape}")
         
         original_tensor = torch.from_numpy(original_features).float().unsqueeze(0)

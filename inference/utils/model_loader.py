@@ -142,27 +142,53 @@ class ModelLoader:
                 self.model_config = config.get('model', {})
                 logger.info(f"Found model config in checkpoint: {self.model_config}")
             else:
-                # Конфигурация по умолчанию, если не найдена в checkpoint
-                self.model_config = {
-                    'in_features': 11,  # Исправлено: 11 признаков как в обучении
-                    'conv_channels': (64, 128),
-                    'gru_hidden': 256,
-                    'gru_layers': 3,    # Исправлено: 3 слоя как в обучении
-                    'embedding_dim': 256, # Исправлено: 256 как в обучении
-                    'dropout': 0.2      # Исправлено: 0.2 как в обучении
-                }
-                logger.warning("No model config found in checkpoint, using defaults")
+                # Конфигурация по умолчанию в зависимости от версии модели
+                model_name = self.model_config_info.get("module", "").split(".")[-1] if "." in self.model_config_info.get("module", "") else "v1"
+                
+                if model_name == "v2":
+                    # Конфигурация для v2
+                    self.model_config = {
+                        'in_features': 21,  # 21 признак для v2
+                        'conv_channels': (64, 128, 256),  # 3 слоя CNN для v2
+                        'gru_hidden': 256,
+                        'gru_layers': 3,
+                        'embedding_dim': 256,
+                        'dropout': 0.3
+                    }
+                else:
+                    # Конфигурация для v1 (по умолчанию)
+                    self.model_config = {
+                        'in_features': 11,  # 11 признаков для v1
+                        'conv_channels': (64, 128),
+                        'gru_hidden': 256,
+                        'gru_layers': 3,
+                        'embedding_dim': 256,
+                        'dropout': 0.2
+                    }
+                logger.warning(f"No model config found in checkpoint, using defaults for {model_name}")
             
             self._log_memory_usage("after_checkpoint_load")
             
+            # Определение значений по умолчанию в зависимости от версии модели
+            model_name = self.model_config_info.get("module", "").split(".")[-1] if "." in self.model_config_info.get("module", "") else "v1"
+            
+            if model_name == "v2":
+                default_in_features = 21
+                default_conv_channels = (64, 128, 256)
+                default_dropout = 0.3
+            else:
+                default_in_features = 11
+                default_conv_channels = (64, 128)
+                default_dropout = 0.2
+            
             # Создание модели с правильной архитектурой
             self.model = SignatureEncoder(
-                in_features=self.model_config.get('in_features', 11),
-                conv_channels=self.model_config.get('conv_channels', (64, 128)),
+                in_features=self.model_config.get('in_features', default_in_features),
+                conv_channels=self.model_config.get('conv_channels', default_conv_channels),
                 gru_hidden=self.model_config.get('gru_hidden', 256),
                 gru_layers=self.model_config.get('gru_layers', 3),
                 emb_dim=self.model_config.get('embedding_dim', 256),
-                dropout=self.model_config.get('dropout', 0.2)
+                dropout=self.model_config.get('dropout', default_dropout)
             )
             
             # Загрузка весов модели

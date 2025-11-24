@@ -4,7 +4,7 @@
   "type": "module",
   "workspaces": [
     "vercel-site",
-    "render-inference",
+    "inference",
     "colab-training"
   ],
   "devDependencies": {
