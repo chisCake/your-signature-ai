@@ -13,7 +13,7 @@ Write-Host "Запуск inference сервера с $w воркер(ами)..."
 # Активируем виртуальное окружение
 Write-Host "Активация виртуального окружения..." -ForegroundColor Yellow
 try {
-    & "render-inference\.venv\Scripts\Activate.ps1"
+    & "inference\.venv\Scripts\Activate.ps1"
     Write-Host "Виртуальное окружение активировано успешно" -ForegroundColor Green
 } catch {
     Write-Error "Ошибка при активации виртуального окружения: $_"
