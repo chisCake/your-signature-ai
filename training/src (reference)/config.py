@@ -4,22 +4,25 @@ from typing import Optional, List, Tuple
 
 @dataclass
 class AugmentationConfig:
-    """Конфигурация аугментации данных"""
+    """Configuration for data augmentation parameters."""
 
-    time_warp_prob: float = 0.5
-    time_warp_sigma: float = 0.3
-    noise_prob: float = 0.5
-    noise_sigma: float = 0.02
+    time_warp_prob: float = 0.45
+    time_warp_sigma: float = 0.25
+    noise_prob: float = 0.45
+    noise_sigma: float = 0.015
     rotation_prob: float = 0.3
-    rotation_range: float = 8.0
+    rotation_range: float = 6.0
     scale_prob: float = 0.3
-    scale_range: List[float] = field(default_factory=lambda: [0.85, 1.15])
-    dropout_prob: float = 0.2
-    dropout_rate: float = 0.1
-    time_resample_prob: float = 0.5
-    resample_range: List[int] = field(default_factory=lambda: [200, 1000])
-    pressure_prob: float = 0.4
-    pressure_range: List[float] = field(default_factory=lambda: [0.8, 1.2])
+    scale_range: Tuple[float, float] = (0.88, 1.12)
+    dropout_prob: float = 0.15
+    dropout_rate: float = 0.07
+    time_resample_prob: float = 0.4
+    resample_range: Tuple[int, int] = (
+        300,
+        800,
+    )  # Оставляем этот параметр без изменений
+    pressure_prob: float = 0.35
+    pressure_range: Tuple[float, float] = (0.85, 1.15)
 
 
 @dataclass
@@ -99,7 +102,7 @@ class TrainingConfig:
     weight_decay: float = 3e-05  # Рекомендуемый weight decay
     mixed_precision: bool = True  # AMP для экономии VRAM
     seed: int = 42
-    device: Optional[str] = None
+    device: Optional[str] = None  # "cuda" | "cpu" | None => auto
     # mining/loss
     loss_type: str = "triplet"  # "triplet" | "contrastive"
     triplet_margin: float = 0.3  # Увеличено с 0.2 до 0.3 для лучшего разделения классов
@@ -134,7 +137,7 @@ class TrainingConfig:
         15  # Increased to give more time after miner mode transitions
     )
     # splits (per-user)
-    train_ratio: float = 0.7
+    train_ratio: float = 0.70
     val_ratio: float = 0.15
     test_ratio: float = 0.15
     # split mode: if True, split by users (val/test users are disjoint from train users)
