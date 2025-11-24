@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "vercel-site",
+    "site",
     "inference",
-    "colab-training"
+    "training"
   ],
   "devDependencies": {
     "@supabase/supabase-js": "^2.57.4",
