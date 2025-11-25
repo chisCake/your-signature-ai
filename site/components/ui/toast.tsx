@@ -20,7 +20,49 @@ let globalPublish: (opts: ToastOptions) => void = () => {
   console.warn('Toast provider is not mounted yet.');
 };
 
-export const toast = (opts: ToastOptions) => globalPublish(opts);
+// Тип для toast с методами
+export interface ToastFunction {
+  (opts: ToastOptions): void;
+  error: (message: string, title?: string) => void;
+  success: (message: string, title?: string) => void;
+  info: (message: string, title?: string) => void;
+  warning: (message: string, title?: string) => void;
+}
+
+export const toast = ((opts: ToastOptions) => globalPublish(opts)) as ToastFunction;
+
+// Вспомогательные методы для удобства использования
+toast.error = (message: string, title?: string) => {
+  globalPublish({
+    title: title || 'Ошибка',
+    description: message,
+    type: 'foreground',
+  });
+};
+
+toast.success = (message: string, title?: string) => {
+  globalPublish({
+    title: title || 'Успешно',
+    description: message,
+    type: 'foreground',
+  });
+};
+
+toast.info = (message: string, title?: string) => {
+  globalPublish({
+    title: title || 'Информация',
+    description: message,
+    type: 'foreground',
+  });
+};
+
+toast.warning = (message: string, title?: string) => {
+  globalPublish({
+    title: title || 'Предупреждение',
+    description: message,
+    type: 'foreground',
+  });
+};
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
