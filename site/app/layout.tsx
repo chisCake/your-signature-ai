@@ -1,19 +1,20 @@
-import type { Metadata, Viewport } from 'next';
-import React from 'react';
-import { Geist } from 'next/font/google';
-import { ThemeProvider } from 'next-themes';
-import { ThemeSwitcher } from '@/components/layout/theme-switcher';
-import { AuthButton } from '@/components/auth/auth-button';
-import Link from 'next/link';
-import { DashboardList } from '@/components/dashboard/dashboard-list';
 import '@/app/globals.css';
+import { AuthButton } from '@/components/auth/auth-button';
 import { ActionPageList } from '@/components/dashboard/dashboard-action-list';
-import { ToastProvider } from '@/components/ui/toast';
-import { ConfirmDialogProvider } from '@/components/ui/alert-dialog';
+import { DashboardList } from '@/components/dashboard/dashboard-list';
 import { MobileNavigation } from '@/components/layout/mobile-navigation';
-import { Github } from 'lucide-react';
+import { ThemeSwitcher } from '@/components/layout/theme-switcher';
+import { ProjectStatus } from '@/components/status/project-status';
+import { ConfirmDialogProvider } from '@/components/ui/alert-dialog';
+import { ToastProvider } from '@/components/ui/toast';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Github } from 'lucide-react';
+import type { Metadata, Viewport } from 'next';
+import { ThemeProvider } from 'next-themes';
+import { Geist } from 'next/font/google';
+import Link from 'next/link';
+import React from 'react';
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -102,7 +103,7 @@ export default function RootLayout({
                   <div className='container mx-auto px-4 sm:px-6 lg:px-8 py-6'>
                     <div className='flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground'>
                       {/* Лево */}
-                      <div className='flex flex-col sm:flex-row items-center gap-2'>
+                      <div className='flex flex-col sm:flex-row items-center gap-4'>
                         <Link
                           href='/'
                           className='flex items-center h-full hover:text-foreground transition-colors'
@@ -117,7 +118,10 @@ export default function RootLayout({
                         </Link>
                       </div>
                       {/* Право */}
-                      <div>
+                      <div className='flex items-center justify-end gap-4'>
+                        <div className='flex items-center justify-center'>
+                          <ProjectStatus compact />
+                        </div>
                         <Link
                           href='https://github.com/chisCake/your-signature-ai'
                           className='flex items-center gap-2 hover:text-foreground transition-colors'
