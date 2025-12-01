@@ -10,6 +10,7 @@ from datetime import datetime as _dt
 import json
 import csv
 import time
+import shutil
 
 from config import DatasetConfig, ModelConfig, TrainingConfig
 from data.lmdb_dataset import LmdbSignatureDataset
@@ -112,7 +113,7 @@ class TrainingRunner:
     model_cfg: ModelConfig
     train_cfg: TrainingConfig
 
-    def _setup_output_dirs(self) -> Tuple[str, str, str, str]:
+    def _setup_output_dirs(self) -> Tuple[str, str, str, str, str]:
         """Setup output directories with run_name or timestamp.
 
         Directory structure:
@@ -120,7 +121,7 @@ class TrainingRunner:
         - If run_name is None: output_dir/TIMESTAMP/
 
         Returns:
-            Tuple of (checkpoint_dir, log_dir, plot_dir, run_name)
+            Tuple of (checkpoint_dir, log_dir, plot_dir, run_dir, run_name)
         """
         # If legacy dirs are provided, use them as-is
         if (
@@ -129,10 +130,13 @@ class TrainingRunner:
             and self.train_cfg.plot_dir
         ):
             run_name = self.train_cfg.run_name or "run"
+            # Extract run_dir from checkpoint_dir (remove "checkpoints" suffix)
+            run_dir = os.path.dirname(self.train_cfg.checkpoint_dir)
             return (
                 self.train_cfg.checkpoint_dir,
                 self.train_cfg.log_dir,
                 self.train_cfg.plot_dir,
+                run_dir,
                 run_name,
             )
 
@@ -157,8 +161,9 @@ class TrainingRunner:
         os.makedirs(checkpoint_dir, exist_ok=True)
         os.makedirs(log_dir, exist_ok=True)
         os.makedirs(plot_dir, exist_ok=True)
+        os.makedirs(run_dir, exist_ok=True)
 
-        return checkpoint_dir, log_dir, plot_dir, run_name
+        return checkpoint_dir, log_dir, plot_dir, run_dir, run_name
 
     def _setup_logging(self, log_dir: str) -> None:
         """Setup custom logger that writes to both console and file."""
@@ -626,7 +631,7 @@ class TrainingRunner:
         device = resolve_device(self.train_cfg.device)
 
         # Setup output directories
-        checkpoint_dir, log_dir, plot_dir, run_name = self._setup_output_dirs()
+        checkpoint_dir, log_dir, plot_dir, run_dir, run_name = self._setup_output_dirs()
 
         # Setup logging
         self._setup_logging(log_dir)
@@ -672,10 +677,25 @@ class TrainingRunner:
             "model_config": asdict(self.model_cfg),
             "training_config": asdict(self.train_cfg),
         }
-        configs_file_path = os.path.join(log_dir, "configs.json")
+        configs_file_path = os.path.join(run_dir, "configs.json")
         with open(configs_file_path, "w", encoding="utf-8") as f:
             json.dump(configs_data, f, indent=2, ensure_ascii=False)
         self.log(f"Configs saved to: {configs_file_path}")
+
+        # Save model .py file to run directory
+        try:
+            # Get the path to the model file
+            import models.hybrid
+            model_file_path = models.hybrid.__file__
+            if model_file_path and os.path.exists(model_file_path):
+                # Copy model file to run directory as model.py
+                model_dest_path = os.path.join(run_dir, "model.py")
+                shutil.copy2(model_file_path, model_dest_path)
+                self.log(f"Model file saved to: {model_dest_path}")
+            else:
+                self.log(f"Warning: Could not find model file at {model_file_path}")
+        except Exception as e:
+            self.log(f"Warning: Failed to save model file: {e}")
 
         try:
             # Calculate input features: base features (x,y,p,t_norm) + derived features

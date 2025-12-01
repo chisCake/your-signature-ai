@@ -13,15 +13,15 @@ Write-Host "Запуск inference сервера с $w воркер(ами)..."
 # Активируем виртуальное окружение
 Write-Host "Активация виртуального окружения..." -ForegroundColor Yellow
 try {
-    & "inference\.venv\Scripts\Activate.ps1"
+    & ".venv\Scripts\Activate.ps1"
     Write-Host "Виртуальное окружение активировано успешно" -ForegroundColor Green
 } catch {
     Write-Error "Ошибка при активации виртуального окружения: $_"
     exit 1
 }
 
-# Переходим в директорию render-inference
-Set-Location "render-inference"
+# Переходим в директорию inference
+Set-Location "inference"
 
 # Запускаем uvicorn сервер
 Write-Host "Запуск uvicorn сервера..." -ForegroundColor Yellow

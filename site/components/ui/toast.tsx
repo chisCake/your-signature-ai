@@ -29,7 +29,8 @@ export interface ToastFunction {
   warning: (message: string, title?: string) => void;
 }
 
-export const toast = ((opts: ToastOptions) => globalPublish(opts)) as ToastFunction;
+export const toast = ((opts: ToastOptions) =>
+  globalPublish(opts)) as ToastFunction;
 
 // Вспомогательные методы для удобства использования
 toast.error = (message: string, title?: string) => {

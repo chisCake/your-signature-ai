@@ -137,7 +137,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 ## Структура проекта
 
 ```
-render-inference/
+inference/
 ├── main.py                 # Основной файл FastAPI приложения
 ├── routes/                 # Эндпоинты
 │   ├── health.py          # Health check и корневой эндпоинт

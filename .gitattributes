@@ -1,0 +1,25 @@
+# Устанавливаем CRLF для всех текстовых файлов
+* text eol=crlf
+
+# Исключения для файлов, которые должны оставаться с LF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Бинарные файлы
+*.pt binary
+*.bin binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+

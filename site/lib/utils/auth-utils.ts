@@ -2,8 +2,11 @@ import { UserRole } from '@/lib/types';
 
 export function getUserRole(user: unknown): UserRole | null {
   if (!user) return null;
-  return (user as { user_metadata: { role: UserRole } }).user_metadata
-    .role as UserRole;
+  const userWithMetadata = user as { user_metadata?: { role?: UserRole } };
+  if (!userWithMetadata.user_metadata || !userWithMetadata.user_metadata.role) {
+    return null;
+  }
+  return userWithMetadata.user_metadata.role;
 }
 
 export function hasRole(user: unknown, requiredRole: UserRole) {
