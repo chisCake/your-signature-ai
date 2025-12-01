@@ -95,7 +95,9 @@ export function InferenceStatusChecker({
 
     try {
       const inferenceUrl =
-        process.env.NEXT_PUBLIC_INFERENCE_URL || 'http://localhost:8000';
+        process.env.NEXT_PUBLIC_INFERENCE_URL ||
+        process.env.NEXT_PUBLIC_INFERENCE_SERVER_URL ||
+        'http://localhost:8000';
 
       // Увеличиваем таймаут для остановленного/запускающегося сервера
       // чтобы дать серверу время на запуск (хост может замораживать сервер)
