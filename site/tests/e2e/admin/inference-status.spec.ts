@@ -30,11 +30,14 @@ test.describe('Inference Status in Admin Dashboard', () => {
       'Остановлен',
     ];
     const hasStatusLabel = await Promise.any(
-      statusLabels.map((label) =>
-        page.locator(`text=${label}`).isVisible().then((visible) => {
-          if (visible) return true;
-          throw new Error(`Status label "${label}" not found`);
-        })
+      statusLabels.map(label =>
+        page
+          .locator(`text=${label}`)
+          .isVisible()
+          .then(visible => {
+            if (visible) return true;
+            throw new Error(`Status label "${label}" not found`);
+          })
       )
     ).catch(() => false);
 
@@ -49,16 +52,11 @@ test.describe('Inference Status in Admin Dashboard', () => {
 
     // Проверяем наличие деталей (модель, память, Supabase)
     // Эти элементы могут не отображаться, если сервер не работает
-    const modelLabel = page.locator('text=Модель:');
-    const memoryLabel = page.locator('text=Память:');
-    const supabaseLabel = page.locator('text=Supabase:');
+    // const modelLabel = page.locator('text=Модель:');
+    // const memoryLabel = page.locator('text=Память:');
+    // const supabaseLabel = page.locator('text=Supabase:');
 
     // Проверяем, что хотя бы один из элементов может быть виден
-    const hasDetails =
-      (await modelLabel.isVisible()) ||
-      (await memoryLabel.isVisible()) ||
-      (await supabaseLabel.isVisible());
-
     // Это необязательная проверка, так как детали показываются только когда сервер работает
     // Просто проверяем, что страница загрузилась корректно
     expect(true).toBeTruthy();
@@ -69,12 +67,8 @@ test.describe('Inference Status in Admin Dashboard', () => {
 
     // Проверяем наличие URL сервера (может быть не всегда виден)
     // Это опциональная проверка
-    const urlElement = page.locator('text=/health');
-    const isVisible = await urlElement.isVisible().catch(() => false);
-
     // URL может быть не виден, если переменная окружения не установлена
     // Просто проверяем, что страница загрузилась
     expect(true).toBeTruthy();
   });
 });
-

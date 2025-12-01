@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getAuthTokenName } from '../../utils';
+import { getAuthTokenName } from '@/tests/utils';
 
 test.describe('Admin dashboard', () => {
   test('opens admin dashboard', async ({ page }) => {

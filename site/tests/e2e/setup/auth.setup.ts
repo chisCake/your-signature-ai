@@ -8,13 +8,13 @@ for (const [key, user] of Object.entries(testUsers)) {
   test(`@${key} login and save storage`, async ({ page }) => {
     console.error(`Testing login for ${key} with email: ${user.email}`);
 
-    await page.goto('/auth/login');
+    await page.goto('/auth/login', { waitUntil: 'networkidle' });
     await page.fill('#email', user.email);
     await page.fill('#password', user.password);
     await page.click('button[type="submit"]');
 
-    // дождаться редиректа на базовый дашборд
-    await page.waitForURL('/dashboard');
+    // дождаться редиректа на дашборд (может быть /dashboard, /dashboard-admin или /dashboard-mod)
+    await page.waitForURL(/\/dashboard/, { timeout: 30000 });
 
     // сохранить состояние аутентификации
     await page

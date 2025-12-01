@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
+import type { HealthStatus } from '@/app/api/health/route';
 
 test.describe('Health API', () => {
-  test('should return health status for all components', async ({ request }) => {
+  test('should return health status for all components', async ({
+    request,
+  }) => {
     const response = await request.get('/api/health');
     expect(response.ok()).toBeTruthy();
 
@@ -52,20 +55,25 @@ test.describe('Health API', () => {
 
   test('should return valid component status values', async ({ request }) => {
     const response = await request.get('/api/health');
-    const data = await response.json();
+    const data = (await response.json()) as HealthStatus;
 
     const validStatuses = ['up', 'down', 'checking'];
-    Object.values(data.components).forEach((component: any) => {
-      expect(validStatuses).toContain(component.status);
+    Object.values(data.components).forEach(component => {
+      if (component) {
+        expect(validStatuses).toContain(component.status);
+      }
     });
   });
 
   test('should include response time for components', async ({ request }) => {
     const response = await request.get('/api/health');
-    const data = await response.json();
+    const data = (await response.json()) as HealthStatus;
 
-    Object.values(data.components).forEach((component: any) => {
-      if (component.status === 'up' || component.status === 'down') {
+    Object.values(data.components).forEach(component => {
+      if (
+        component &&
+        (component.status === 'up' || component.status === 'down')
+      ) {
         expect(component).toHaveProperty('responseTime');
         expect(typeof component.responseTime).toBe('number');
         expect(component.responseTime).toBeGreaterThanOrEqual(0);
@@ -73,4 +81,3 @@ test.describe('Health API', () => {
     });
   });
 });
-

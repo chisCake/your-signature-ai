@@ -8,18 +8,18 @@ interface TestUser {
 
 export const testUsers: Record<TestUserKey, TestUser> = {
   admin: {
-    email: 'admin@test.com',
-    password: 'admin123',
+    email: 'admin@example.com',
+    password: '*GtwY+irGTw2-D%L',
     role: 'admin',
   },
   mod: {
-    email: 'mod@test.com',
-    password: 'mod123',
+    email: 'mod@example.com',
+    password: '*_tt_*8#Z.6647F',
     role: 'mod',
   },
   user: {
-    email: 'user@test.com',
-    password: 'user123',
+    email: 'user@example.com',
+    password: 'R@#6$y!qzcEfM9S',
     role: 'user',
   },
 };
