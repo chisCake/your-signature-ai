@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from '@/components/ui/toast';
 import { LoaderCircle } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface InferenceHealthResponse {
   // Новый формат
@@ -37,7 +38,7 @@ export function getServerStatusInfo(status: ServerStatus): ServerStatusInfo {
     case 'starting':
       return {
         status: 'starting',
-        label: 'Запуск',
+        label: 'Проверка',
         color: 'text-yellow-600',
         bgColor: 'bg-yellow-500',
       };
@@ -59,7 +60,10 @@ export function getServerStatusInfo(status: ServerStatus): ServerStatusInfo {
 }
 
 interface InferenceStatusCheckerProps {
-  onStatusChange?: (status: ServerStatus, data: InferenceHealthResponse | null) => void;
+  onStatusChange?: (
+    status: ServerStatus,
+    data: InferenceHealthResponse | null
+  ) => void;
   autoCheck?: boolean;
   checkInterval?: number;
   showDetails?: boolean;
@@ -80,19 +84,14 @@ export function InferenceStatusChecker({
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
   const statusRef = useRef<ServerStatus>('starting');
+  const isFirstCheckRef = useRef<boolean>(true);
+  const wasWorkingRef = useRef<boolean>(false);
 
   const checkServerHealth = useCallback(async () => {
-    console.log('[InferenceStatusChecker] Начало проверки состояния сервера');
     setIsChecking(true);
 
     // Получаем текущий статус для определения таймаута
     const currentStatus = statusRef.current;
-    console.log('[InferenceStatusChecker] Текущий статус:', currentStatus);
-
-    // Если сервер остановлен или запускается, показываем статус "Запуск"
-    if (currentStatus === 'stopped' || currentStatus === 'starting') {
-      setServerStatus('starting');
-    }
 
     try {
       const inferenceUrl =
@@ -100,67 +99,64 @@ export function InferenceStatusChecker({
 
       // Увеличиваем таймаут для остановленного/запускающегося сервера
       // чтобы дать серверу время на запуск (хост может замораживать сервер)
+      // При ошибке используем короткий таймаут для быстрой проверки восстановления
       const timeout =
         currentStatus === 'stopped' || currentStatus === 'starting'
           ? 30000 // 30 секунд для запускающегося сервера
-          : 5000; // 5 секунд для обычной проверки
+          : 5000; // 5 секунд для обычной проверки или при ошибке
 
-      console.log(`[InferenceStatusChecker] Проверка сервера: ${inferenceUrl}/health, таймаут: ${timeout}ms`);
-
-      const startTime = Date.now();
       const response = await fetch(`${inferenceUrl}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(timeout),
       });
-      const responseTime = Date.now() - startTime;
-
-      console.log('[InferenceStatusChecker] Ответ от сервера:', {
-        status: response.status,
-        ok: response.ok,
-        responseTime: `${responseTime}ms`,
-      });
 
       if (!response.ok) {
-        console.warn('[InferenceStatusChecker] Сервер вернул ошибку:', response.status);
         statusRef.current = 'error';
         setServerStatus('error');
         setHealthData(null);
+
+        // Показываем toast только при первой неудаче или если сервер был рабочим
+        if (isFirstCheckRef.current || wasWorkingRef.current) {
+          toast.error('Inference сервер недоступен');
+          isFirstCheckRef.current = false;
+          wasWorkingRef.current = false;
+        }
+
         onStatusChange?.('error', null);
         return;
       }
 
       const data: InferenceHealthResponse = await response.json();
-      console.log('[InferenceStatusChecker] Данные от сервера:', data);
 
       // Поддержка нового формата (ok: true) и старого (status: "healthy")
       const isHealthy = data.ok === true || data.status === 'healthy';
-      console.log('[InferenceStatusChecker] Сервер здоров:', isHealthy);
 
       if (isHealthy) {
-        console.log('[InferenceStatusChecker] Сервер работает нормально');
         statusRef.current = 'working';
         setServerStatus('working');
         setHealthData(data);
+        wasWorkingRef.current = true;
+        isFirstCheckRef.current = false;
         onStatusChange?.('working', data);
       } else {
-        console.warn('[InferenceStatusChecker] Сервер сообщил о нездоровом состоянии');
         statusRef.current = 'error';
         setServerStatus('error');
         setHealthData(data);
+
+        // Показываем toast только при первой неудаче или если сервер был рабочим
+        if (isFirstCheckRef.current || wasWorkingRef.current) {
+          toast.error('Inference сервер сообщил о нездоровом состоянии');
+          isFirstCheckRef.current = false;
+          wasWorkingRef.current = false;
+        }
+
         onStatusChange?.('error', data);
       }
     } catch (error) {
-      console.error('[InferenceStatusChecker] Ошибка проверки состояния сервера:', error);
-      // Если ошибка сети, таймаут или CORS - сервер остановлен
+      // Тихо обновляем статус в фоне, без логирования
       if (error instanceof Error) {
         const errorMessage = error.message.toLowerCase();
         const errorName = error.name.toLowerCase();
-
-        console.log('[InferenceStatusChecker] Детали ошибки:', {
-          name: errorName,
-          message: errorMessage,
-          type: error.constructor.name,
-        });
 
         if (
           errorName === 'aborterror' ||
@@ -169,27 +165,55 @@ export function InferenceStatusChecker({
           errorMessage.includes('timeout') ||
           errorMessage.includes('cors')
         ) {
-          console.log('[InferenceStatusChecker] Сервер остановлен (сетевые проблемы)');
-          statusRef.current = 'stopped';
-          setServerStatus('stopped');
-          onStatusChange?.('stopped', null);
+          // Если уже была ошибка, не меняем статус на "stopped", оставляем "error"
+          if (currentStatus !== 'error') {
+            statusRef.current = 'stopped';
+            setServerStatus('stopped');
+
+            // Показываем toast только при первой неудаче или если сервер был рабочим
+            if (isFirstCheckRef.current || wasWorkingRef.current) {
+              toast.error('Inference сервер недоступен');
+              isFirstCheckRef.current = false;
+              wasWorkingRef.current = false;
+            }
+
+            onStatusChange?.('stopped', null);
+          }
         } else {
-          console.log('[InferenceStatusChecker] Сервер в состоянии ошибки');
-          statusRef.current = 'error';
-          setServerStatus('error');
-          onStatusChange?.('error', null);
+          // Для других ошибок устанавливаем статус "error" только если его еще не было
+          if (currentStatus !== 'error') {
+            statusRef.current = 'error';
+            setServerStatus('error');
+
+            // Показываем toast только при первой неудаче или если сервер был рабочим
+            if (isFirstCheckRef.current || wasWorkingRef.current) {
+              toast.error('Ошибка проверки Inference сервера');
+              isFirstCheckRef.current = false;
+              wasWorkingRef.current = false;
+            }
+
+            onStatusChange?.('error', null);
+          }
         }
       } else {
-        console.log('[InferenceStatusChecker] Неизвестная ошибка');
-        statusRef.current = 'error';
-        setServerStatus('error');
-        onStatusChange?.('error', null);
+        if (currentStatus !== 'error') {
+          statusRef.current = 'error';
+          setServerStatus('error');
+
+          // Показываем toast только при первой неудаче или если сервер был рабочим
+          if (isFirstCheckRef.current || wasWorkingRef.current) {
+            toast.error('Ошибка проверки Inference сервера');
+            isFirstCheckRef.current = false;
+            wasWorkingRef.current = false;
+          }
+
+          onStatusChange?.('error', null);
+        }
       }
       setHealthData(null);
     } finally {
       setIsChecking(false);
       setLastCheckTime(new Date());
-      console.log('[InferenceStatusChecker] Проверка завершена, статус:', statusRef.current);
     }
   }, [onStatusChange]);
 
@@ -201,27 +225,15 @@ export function InferenceStatusChecker({
   useEffect(() => {
     if (!autoCheck) return;
 
-    // Проверяем состояние при загрузке
     checkServerHealth();
 
-    // Определяем интервал проверки в зависимости от статуса
-    const getCheckInterval = (status: ServerStatus): number => {
-      // Если сервер работает нормально - проверяем реже (30 секунд)
-      if (status === 'working') {
-        return 30000;
-      }
-      // Если сервер остановлен, запускается или ошибка - проверяем чаще (10 секунд)
-      // чтобы быстро обнаружить восстановление или получить мгновенный ответ
-      return 10000;
-    };
-
-    // Создаем интервал, который будет пересоздаваться при изменении статуса
+    const intervalMs = checkInterval ?? 5000;
     const interval = setInterval(() => {
       checkServerHealth();
-    }, checkInterval || getCheckInterval(serverStatus));
+    }, intervalMs);
 
     return () => clearInterval(interval);
-  }, [autoCheck, checkServerHealth, serverStatus, checkInterval]);
+  }, [autoCheck, checkServerHealth, checkInterval]);
 
   const statusInfo = getServerStatusInfo(serverStatus);
 
@@ -298,4 +310,3 @@ export function InferenceStatusChecker({
     </div>
   );
 }
-

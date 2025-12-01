@@ -31,7 +31,7 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
       component: 'api' | 'supabase' | 'inference'
     ): Promise<ComponentHealth> => {
       // console.log(`[ProjectStatus] Начало проверки компонента: ${component}`);
-      const startTime = Date.now();
+      // const startTime = Date.now();
 
       try {
         const response = await fetch(`/api/health?component=${component}`, {
@@ -47,9 +47,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
         // });
 
         if (!response.ok) {
-          console.warn(
-            `[ProjectStatus] Компонент ${component} недоступен: HTTP ${response.status}`
-          );
           return {
             status: 'down',
             error: `HTTP ${response.status}`,
@@ -69,23 +66,12 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
         // );
         return componentHealth;
       } catch (error) {
-        const responseTime = Date.now() - startTime;
         const errorMessage =
           error instanceof Error
             ? error.message
             : error instanceof DOMException && error.name === 'AbortError'
               ? 'Timeout'
               : 'Unknown error';
-
-        console.error(
-          `[ProjectStatus] Ошибка проверки компонента ${component}:`,
-          {
-            error: errorMessage,
-            responseTime: `${responseTime}ms`,
-            errorType:
-              error instanceof Error ? error.constructor.name : typeof error,
-          }
-        );
 
         return {
           status: 'down',
@@ -119,8 +105,8 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
       // console.log(
       //   '[ProjectStatus] Статусы компонентов обновлены (серверная проверка)'
       // );
-    } catch (error) {
-      console.error('[ProjectStatus] Ошибка проверки компонентов:', error);
+    } catch {
+      // Ошибка проверки компонентов - тихо игнорируем
     } finally {
       setIsChecking(false);
       // console.log('[ProjectStatus] Серверная проверка компонентов завершена');
@@ -155,10 +141,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
           };
         }
 
-        console.warn(
-          '[ProjectStatus] Сайт недоступен (клиентская проверка):',
-          response.status
-        );
         return {
           status: 'down',
           responseTime,
@@ -173,13 +155,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
             : error instanceof DOMException && error.name === 'AbortError'
               ? 'Timeout'
               : 'Unknown error';
-
-        console.error('[ProjectStatus] Ошибка клиентской проверки сайта:', {
-          error: errorMessage,
-          responseTime: `${responseTime}ms`,
-          errorType:
-            error instanceof Error ? error.constructor.name : typeof error,
-        });
 
         return {
           status: 'down',
@@ -211,10 +186,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
         const responseTime = Date.now() - startTime;
 
         if (error) {
-          console.warn(
-            '[ProjectStatus] Supabase недоступен (клиентская проверка):',
-            error.message
-          );
           return {
             status: 'down',
             responseTime,
@@ -237,13 +208,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
             : error instanceof DOMException && error.name === 'AbortError'
               ? 'Timeout'
               : 'Unknown error';
-
-        console.error('[ProjectStatus] Ошибка клиентской проверки Supabase:', {
-          error: errorMessage,
-          responseTime: `${responseTime}ms`,
-          errorType:
-            error instanceof Error ? error.constructor.name : typeof error,
-        });
 
         return {
           status: 'down',
@@ -285,10 +249,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
         // );
 
         if (!response.ok) {
-          console.warn(
-            '[ProjectStatus] Inference сервер недоступен (клиентская проверка):',
-            response.status
-          );
           return {
             status: 'down',
             responseTime,
@@ -308,9 +268,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
         // });
 
         if (!isHealthy) {
-          console.warn(
-            '[ProjectStatus] Inference сервер сообщил о нездоровом состоянии'
-          );
           return {
             status: 'down',
             responseTime,
@@ -336,16 +293,6 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
               ? 'Timeout'
               : 'Unknown error';
 
-        console.error(
-          '[ProjectStatus] Ошибка клиентской проверки Inference сервера:',
-          {
-            error: errorMessage,
-            responseTime: `${responseTime}ms`,
-            errorType:
-              error instanceof Error ? error.constructor.name : typeof error,
-          }
-        );
-
         // Если клиентская проверка не удалась, используем серверную
         // console.log(
         //   '[ProjectStatus] Переключение на серверную проверку Inference сервера'
@@ -360,11 +307,7 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
             ...serverCheck,
             responseTime,
           };
-        } catch (serverError) {
-          console.error(
-            '[ProjectStatus] Ошибка серверной проверки Inference сервера:',
-            serverError
-          );
+        } catch {
           return {
             status: 'down',
             responseTime,
@@ -405,11 +348,7 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
           //   '[ProjectStatus] Результат серверной проверки Supabase:',
           //   finalSupabase
           // );
-        } catch (error) {
-          console.error(
-            '[ProjectStatus] Ошибка серверной проверки Supabase:',
-            error
-          );
+        } catch {
           // Оставляем результат клиентской проверки
         }
       }
@@ -421,8 +360,8 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
       });
 
       // console.log('[ProjectStatus] Статусы компонентов обновлены');
-    } catch (error) {
-      console.error('[ProjectStatus] Ошибка загрузки статусов:', error);
+    } catch {
+      // Ошибка загрузки статусов - тихо игнорируем
       // Если клиентские проверки не удались, используем серверные
       // console.log('[ProjectStatus] Переключение на серверные проверки');
       await checkAllComponents();

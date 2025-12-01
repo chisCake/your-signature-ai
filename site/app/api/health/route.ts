@@ -105,7 +105,7 @@ async function checkInference(): Promise<ComponentHealth> {
     };
   } catch (error) {
     const responseTime = Date.now() - startTime;
-    console.error('Inference server check error:', error);
+    // Ошибка обрабатывается тихо, без вывода в консоль
     return {
       status: 'down',
       responseTime,

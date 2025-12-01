@@ -9,7 +9,7 @@ import { ConfirmDialogProvider } from '@/components/ui/alert-dialog';
 import { ToastProvider } from '@/components/ui/toast';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Github } from 'lucide-react';
+import { Github, Brain } from 'lucide-react';
 import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from 'next-themes';
 import { Geist } from 'next/font/google';
@@ -101,20 +101,27 @@ export default function RootLayout({
                 {/* Мобильно-оптимизированный футер */}
                 <footer className='border-t border-t-foreground/10 bg-muted/30'>
                   <div className='container mx-auto px-4 sm:px-6 lg:px-8 py-6'>
-                    <div className='flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground'>
+                    <div className='flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-2 text-sm text-muted-foreground'>
                       {/* Лево */}
                       <div className='flex flex-col sm:flex-row items-center gap-4'>
                         <Link
-                          href='/'
+                          href='/about/terms'
                           className='flex items-center h-full hover:text-foreground transition-colors'
                         >
                           Пользовательское соглашение
                         </Link>
                         <Link
-                          href='/'
+                          href='/about/privacy'
                           className='flex items-center h-full hover:text-foreground transition-colors'
                         >
                           Политика конфиденциальности
+                        </Link>
+                        <Link
+                          href='/about/neuralnetwork'
+                          className='flex items-center gap-1 h-full hover:text-foreground transition-colors'
+                        >
+                          <Brain className='h-4 w-4' />
+                          Нейронная сеть
                         </Link>
                       </div>
                       {/* Право */}
