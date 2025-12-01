@@ -2,13 +2,16 @@
 
 # === WEB FRAMEWORK ===
 fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
+uvicorn>=0.24.0  # Без [standard] для уменьшения размера (не нужны httptools, uvloop, watchfiles для serverless)
 python-multipart>=0.0.6
 
 # === ML & DL ===
-torch>=2.2
-torchvision>=0.17
-numpy>=1.26
+# CPU-only версия PyTorch 2.2.0 (минимальная доступная версия для Python 3.12)
+# torchvision удален - не используется в коде
+# Используем --extra-index-url чтобы не переопределять основной PyPI индекс
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.0+cpu
+numpy>=1.26,<2.0  # Совместимая версия numpy для PyTorch 2.2
 pillow>=10.0
 
 # === DATABASE ===
@@ -19,11 +22,13 @@ python-dotenv>=1.0
 psutil>=5.9.0
 
 # === DEVELOPMENT ===
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-httpx>=0.24.0
-black>=23.0.0
-flake8>=6.0.0
+# Удалите эти зависимости для продакшена или используйте requirements-dev.txt
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0
+# httpx>=0.24.0
+# black>=23.0.0
+# flake8>=6.0.0
 
 # === PRODUCTION ===
-gunicorn>=21.0.0
+# gunicorn удален - не нужен для Vercel serverless functions
+mangum>=0.17.0  # ASGI adapter for Vercel serverless functions
