@@ -16,11 +16,14 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
-from dependencies import set_supabase_client, set_model_loader
+from utils.model_manager import ModelManager
+from utils.blob_client import BlobClient
+from dependencies import set_supabase_client, set_model_loader, set_model_manager
 from routes.health import router as health_router
 from routes.forgery_by_id import router as forgery_by_id_router
 from routes.forgery_by_data import router as forgery_by_data_router
 from routes.model import router as model_router
+from routes.model_upload import router as model_upload_router
 
 # Настройка логирования
 logging.basicConfig(
@@ -31,6 +34,7 @@ logger = logging.getLogger(__name__)
 # Глобальные переменные для хранения инициализированных компонентов
 supabase_client: SupabaseClient = None
 model_loader: ModelLoader = None
+model_manager: ModelManager = None
 
 
 def check_environment_variables() -> Dict[str, str]:
@@ -39,11 +43,12 @@ def check_environment_variables() -> Dict[str, str]:
         "SUPABASE_URL": os.getenv("SUPABASE_URL"),
         "SUPABASE_SERVICE_ROLE_KEY": os.getenv("SUPABASE_SERVICE_ROLE_KEY"),
     }
-    
+
     # Опциональные переменные
     optional_vars = {
         "MODEL_NAME": os.getenv("MODEL_NAME", "v1"),
         "MODEL_PATH": os.getenv("MODEL_PATH"),  # Для обратной совместимости
+        "ENVIRONMENT": os.getenv("ENVIRONMENT", "development"),
     }
 
     missing_vars = [var for var, value in required_vars.items() if not value]
@@ -53,9 +58,14 @@ def check_environment_variables() -> Dict[str, str]:
             f"Missing required environment variables: {', '.join(missing_vars)}"
         )
 
-    logger.info("All required environment variables are set")
+    environment = optional_vars["ENVIRONMENT"].lower()
+    logger.info("All required environment variables are set (env=%s)", environment)
     logger.info(f"Using model: {optional_vars['MODEL_NAME']}")
-    
+    if environment == "production" and not os.getenv("BLOB_READ_WRITE_TOKEN"):
+        raise ValueError(
+            "BLOB_READ_WRITE_TOKEN must be set when ENVIRONMENT=production"
+        )
+
     # Объединяем обязательные и опциональные переменные
     all_vars = {**required_vars, **optional_vars}
     return all_vars
@@ -76,31 +86,65 @@ def initialize_supabase_client() -> SupabaseClient:
 
 
 def initialize_model() -> ModelLoader:
-    """Инициализация модели с немедленной загрузкой"""
+    """Инициализация модели с немедленной загрузкой (для обратной совместимости)"""
     try:
         # Получаем путь к модели из переменной окружения или используем конфигурацию
         model_path = os.getenv("MODEL_PATH")
         model_name = os.getenv("MODEL_NAME", "v1")
-        
+
         # Модель загружается сразу при создании ModelLoader
         # Если MODEL_PATH не задан, ModelLoader использует путь из конфигурации
         loader = ModelLoader(model_path)
-        
+
         if model_path:
             logger.info(f"Model loader initialized and model loaded for {model_path}")
         else:
             logger.info(f"Model loader initialized using MODEL_NAME={model_name}")
-        
+
         return loader
     except Exception as e:
         logger.error(f"Failed to initialize model: {e}")
         raise
 
 
+def initialize_model_manager() -> ModelManager:
+    """Инициализация менеджера моделей"""
+    try:
+        # Получаем путь к начальной модели
+        model_path = os.getenv("MODEL_PATH")
+        model_name = os.getenv("MODEL_NAME", "v1")
+        environment = os.getenv("ENVIRONMENT", "development").lower()
+
+        # Если MODEL_PATH не задан, формируем путь из MODEL_NAME
+        if not model_path:
+            model_path = f"models/{model_name}.pt"
+
+        blob_client = None
+        if environment == "production":
+            blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
+            if not blob_token:
+                raise ValueError("BLOB_READ_WRITE_TOKEN is required in production")
+            blob_client = BlobClient(blob_token)
+            logger.info("Blob storage enabled for production environment")
+
+        logger.info(f"Initializing ModelManager with initial model: {model_path}")
+        manager = ModelManager(
+            initial_model_path=model_path,
+            blob_client=blob_client,
+            environment=environment,
+        )
+
+        logger.info("ModelManager initialized successfully")
+        return manager
+    except Exception as e:
+        logger.error(f"Failed to initialize ModelManager: {e}")
+        raise
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
-    global supabase_client, model_loader
+    global supabase_client, model_loader, model_manager
 
     logger.info("Starting inference server...")
 
@@ -112,9 +156,20 @@ async def lifespan(app: FastAPI):
         supabase_client = initialize_supabase_client()
         set_supabase_client(supabase_client)
 
-        # Инициализация модели
-        model_loader = initialize_model()
-        set_model_loader(model_loader)
+        # Инициализация менеджера моделей (новый способ)
+        model_manager = initialize_model_manager()
+        set_model_manager(model_manager)
+
+        # Для обратной совместимости также устанавливаем model_loader
+        # Получаем активную модель из менеджера
+        active_model = model_manager.get_active_model()
+        if active_model:
+            model_loader = active_model
+            set_model_loader(model_loader)
+        else:
+            # Fallback к старому способу
+            model_loader = initialize_model()
+            set_model_loader(model_loader)
 
         logger.info("Inference server started successfully")
 
@@ -146,8 +201,8 @@ frontend_urls = [url.strip() for url in frontend_urls if url.strip()]
 # Добавляем дополнительные домены для разработки и продакшена
 additional_origins = [
     "http://localhost:3000",  # Next.js dev server
-    "http://127.0.0.1:3000",   # Alternative localhost
-    "https://localhost:3000", # HTTPS localhost
+    "http://127.0.0.1:3000",  # Alternative localhost
+    "https://localhost:3000",  # HTTPS localhost
 ]
 
 # Объединяем все разрешенные домены
@@ -159,7 +214,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=all_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -168,6 +223,7 @@ app.include_router(health_router)
 app.include_router(forgery_by_id_router)
 app.include_router(forgery_by_data_router)
 app.include_router(model_router)
+app.include_router(model_upload_router)
 
 
 if __name__ == "__main__":
