@@ -523,8 +523,9 @@ export function getForgedSignatureOwnerId(
 // Подпись принадлежит настоящему пользователю или псевдопользователю
 export function isSignatureBelongsToProfile(signature: Signature): boolean {
   return signature.type === 'genuine'
-    ? signature.data.user_id !== null
-    : signature.data.original_user_id !== null;
+    ? signature.data.user_id !== null && signature.data.user_id !== undefined
+    : signature.data.original_user_id !== null &&
+        signature.data.original_user_id !== undefined;
 }
 
 export function prepareGenuineSignatureDataForInsert(
