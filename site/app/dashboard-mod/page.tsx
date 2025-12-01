@@ -65,11 +65,10 @@ export default function ModDashboard() {
   const [recentSignatures, setRecentSignatures] = useState<Signature[]>([]);
   const [recentSignaturesLoading, setRecentSignaturesLoading] = useState(true);
 
-  const client = createBrowserClient();
-
   const loadStats = useCallback(async () => {
     try {
       setStatsLoading(true);
+      const client = createBrowserClient();
 
       const now = new Date();
       const todayStart = new Date(now);
@@ -127,11 +126,12 @@ export default function ModDashboard() {
     } finally {
       setStatsLoading(false);
     }
-  }, [client]);
+  }, []);
 
   const loadRecentSignatures = useCallback(async () => {
     try {
       setRecentSignaturesLoading(true);
+      const client = createBrowserClient();
       const [genuine, forged] = await Promise.all([
         getGenuineSignatures(client, 4, 0),
         getForgedSignatures(client, 4, 0),
@@ -154,7 +154,7 @@ export default function ModDashboard() {
     } finally {
       setRecentSignaturesLoading(false);
     }
-  }, [client]);
+  }, []);
 
   useEffect(() => {
     loadStats();
