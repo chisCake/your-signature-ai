@@ -31,6 +31,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Настройка access logger для uvicorn (логирование всех HTTP запросов)
+uvicorn_access_logger = logging.getLogger("uvicorn.access")
+uvicorn_access_logger.setLevel(logging.INFO)
+
 # Глобальные переменные для хранения инициализированных компонентов
 supabase_client: SupabaseClient = None
 model_loader: ModelLoader = None
@@ -239,4 +243,5 @@ if __name__ == "__main__":
         port=port,
         reload=False,  # В продакшене лучше отключить
         log_level="info",
+        access_log=True,  # Явно включаем access log для всех запросов
     )

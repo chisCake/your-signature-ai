@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
 
   // With Fluid compute, don't put this client in a global environment
   // variable. Always create a new one on each request.
-  createServerClient(supabaseUrl!, supabaseKey!, {
+  const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -63,7 +63,7 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse;
   }
 
-  const user = await getUser();
+  const user = await getUser(supabase);
   // console.log("user (middleware):", user);
 
   if (await isAdmin(user)) {

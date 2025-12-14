@@ -1,8 +1,11 @@
 import {
   csvStringToPoints,
   csvToPoints,
+  downloadSignatureAsPNG,
   formatSignatureDate,
   formatSignatureDateTime,
+  generateSignaturePNG,
+  generateSignaturePreview,
   getForgedSignatureOwnerId,
   getGenuineSignatureOwnerId,
   getShortSignatureId,
@@ -22,6 +25,15 @@ import {
   createTestSignature,
 } from '@/lib/__tests__/test-helpers';
 import { SignaturePoint } from '@/lib/types';
+
+// Мокируем зависимости для новых тестов
+jest.mock('@/lib/utils/auth-client-utils', () => ({
+  getUser: jest.fn(),
+}));
+
+jest.mock('@/components/ui/alert-dialog', () => ({
+  confirm: jest.fn(),
+}));
 
 describe('signature-utils', () => {
   describe('pointsToCSV', () => {
@@ -548,6 +560,568 @@ describe('signature-utils', () => {
           true
         );
       }).toThrow('Original user or pseudouser id is required');
+    });
+  });
+
+  describe('generateSignaturePNG', () => {
+    it('should generate PNG data URL for valid signature', () => {
+      const signature = createTestSignature('genuine', {
+        points: createTestPoints(10),
+      });
+
+      const result = generateSignaturePNG(signature);
+
+      expect(result).toBeTruthy();
+      expect(typeof result).toBe('string');
+      expect(result).toContain('data:image/png');
+    });
+
+    it('should return empty string for signature with no points', () => {
+      const signature = createTestSignature('genuine', {
+        points: [],
+      });
+
+      const result = generateSignaturePNG(signature);
+
+      expect(result).toBe('');
+    });
+
+    it('should use custom width and height', () => {
+      const signature = createTestSignature('genuine', {
+        points: createTestPoints(10),
+      });
+
+      const result = generateSignaturePNG(signature, 400, 200, 2);
+
+      expect(result).toBeTruthy();
+      expect(result).toContain('data:image/png');
+    });
+
+    it('should handle forged signature', () => {
+      const signature = createTestSignature('forged', {
+        points: createTestPoints(10),
+      });
+
+      const result = generateSignaturePNG(signature);
+
+      expect(result).toBeTruthy();
+      expect(result).toContain('data:image/png');
+    });
+
+    it('should return empty string when canvas context is null', () => {
+      const originalGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = jest.fn(() => null);
+
+      const signature = createTestSignature('genuine', {
+        points: createTestPoints(10),
+      });
+
+      const result = generateSignaturePNG(signature);
+
+      expect(result).toBe('');
+
+      HTMLCanvasElement.prototype.getContext = originalGetContext;
+    });
+
+    it('should handle signature with zero width', () => {
+      const points: SignaturePoint[] = [
+        { timestamp: 1000, x: 10, y: 20, pressure: 0.5 },
+        { timestamp: 1010, x: 10, y: 30, pressure: 0.6 },
+      ];
+      const signature = createTestSignature('genuine', { points });
+
+      const result = generateSignaturePNG(signature);
+
+      expect(result).toBe('');
+    });
+
+    it('should handle signature with zero height', () => {
+      const points: SignaturePoint[] = [
+        { timestamp: 1000, x: 10, y: 20, pressure: 0.5 },
+        { timestamp: 1010, x: 20, y: 20, pressure: 0.6 },
+      ];
+      const signature = createTestSignature('genuine', { points });
+
+      const result = generateSignaturePNG(signature);
+
+      expect(result).toBe('');
+    });
+  });
+
+  describe('generateSignaturePreview', () => {
+    it('should generate preview with default dimensions', () => {
+      const signature = createTestSignature('genuine', {
+        points: createTestPoints(10),
+      });
+
+      const result = generateSignaturePreview(signature);
+
+      expect(result).toBeTruthy();
+      expect(result).toContain('data:image/png');
+    });
+
+    it('should call generateSignaturePNG with correct parameters', () => {
+      const signature = createTestSignature('genuine', {
+        points: createTestPoints(10),
+      });
+
+      const result = generateSignaturePreview(signature);
+
+      expect(result).toBeTruthy();
+      // Preview uses 200x100 with strokeWidth 2
+    });
+
+    it('should return empty string for empty signature', () => {
+      const signature = createTestSignature('genuine', {
+        points: [],
+      });
+
+      const result = generateSignaturePreview(signature);
+
+      expect(result).toBe('');
+    });
+  });
+
+  describe('downloadSignatureAsPNG', () => {
+    let createElementSpy: jest.SpyInstance;
+    let mockLink: {
+      download: string;
+      href: string;
+      click: jest.Mock;
+    };
+    let originalCreateElement: typeof document.createElement;
+
+    beforeEach(() => {
+      mockLink = {
+        download: '',
+        href: '',
+        click: jest.fn(),
+      };
+
+      // Получаем оригинальный createElement из global (экспортирован из jest.setup.js)
+      originalCreateElement = (global as any).originalCreateElement;
+
+      // Мокируем createElement, переопределяя только для 'a'
+      createElementSpy = jest.spyOn(document, 'createElement');
+      createElementSpy.mockImplementation((tagName: string) => {
+        if (tagName === 'a') {
+          return mockLink as unknown as HTMLElement;
+        }
+        // Для canvas используем оригинальный createElement
+        // Моки для getContext и toDataURL уже настроены в jest.setup.js
+        if (tagName === 'canvas') {
+          return originalCreateElement.call(document, 'canvas');
+        }
+        // Для других тегов тоже используем оригинальный
+        return originalCreateElement.call(document, tagName);
+      });
+    });
+
+    afterEach(() => {
+      createElementSpy.mockRestore();
+    });
+
+    it('should create download link with default filename', () => {
+      const signature = createTestSignature('genuine', {
+        id: 'test-signature-id',
+        points: createTestPoints(10),
+      });
+
+      downloadSignatureAsPNG(signature);
+
+      expect(createElementSpy).toHaveBeenCalledWith('a');
+      expect(mockLink.download).toBe('signature-test-signature-id.png');
+      expect(mockLink.href).toContain('data:image/png');
+      expect(mockLink.click).toHaveBeenCalled();
+    });
+
+    it('should create download link with custom filename', () => {
+      const signature = createTestSignature('genuine', {
+        points: createTestPoints(10),
+      });
+
+      downloadSignatureAsPNG(signature, 'my-custom-signature.png');
+
+      expect(mockLink.download).toBe('my-custom-signature.png');
+      expect(mockLink.href).toContain('data:image/png');
+      expect(mockLink.click).toHaveBeenCalled();
+    });
+
+    it('should not create link if PNG generation fails', () => {
+      const signature = createTestSignature('genuine', {
+        points: [],
+      });
+
+      downloadSignatureAsPNG(signature);
+
+      expect(mockLink.click).not.toHaveBeenCalled();
+    });
+
+    it('should handle forged signature download', () => {
+      const signature = createTestSignature('forged', {
+        id: 'forged-id',
+        points: createTestPoints(10),
+      });
+
+      downloadSignatureAsPNG(signature);
+
+      expect(mockLink.download).toBe('signature-forged-id.png');
+      expect(mockLink.click).toHaveBeenCalled();
+    });
+  });
+
+  describe('saveOwnSignature', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should save own signature successfully', async () => {
+      const { saveOwnSignature } = require('../signature-utils');
+      const { getUser } = require('../auth-client-utils');
+
+      const user = { id: 'user-1' } as any;
+      (getUser as jest.Mock).mockResolvedValue(user);
+
+      const points = createTestPoints(10);
+      const mockResponse = { id: 'new-signature-id' };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockResponse),
+      });
+
+      const result = await saveOwnSignature({ points, inputType: 'mouse' });
+
+      expect(result).toBe('new-signature-id');
+      expect(global.fetch).toHaveBeenCalledWith('/api/signatures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          points,
+          inputType: 'mouse',
+          userForForgery: false,
+        }),
+      });
+    });
+
+    it('should throw error when user is not authenticated', async () => {
+      const { saveOwnSignature } = require('../signature-utils');
+      const { getUser } = require('../auth-client-utils');
+
+      (getUser as jest.Mock).mockResolvedValue(null);
+
+      const points = createTestPoints(10);
+
+      await expect(saveOwnSignature({ points })).rejects.toThrow(
+        'User not authenticated'
+      );
+    });
+
+    it('should throw error when API request fails', async () => {
+      const { saveOwnSignature } = require('../signature-utils');
+      const { getUser } = require('../auth-client-utils');
+
+      const user = { id: 'user-1' } as any;
+      (getUser as jest.Mock).mockResolvedValue(user);
+
+      const points = createTestPoints(10);
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockResolvedValue({ error: 'Server error' }),
+      });
+
+      await expect(saveOwnSignature({ points })).rejects.toThrow(
+        'Server error'
+      );
+    });
+  });
+
+  describe('saveForAnotherSignature', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should save signature for another user successfully', async () => {
+      const { saveForAnotherSignature } = require('../signature-utils');
+
+      const points = createTestPoints(10);
+      const mockResponse = { id: 'new-signature-id' };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue(mockResponse),
+      });
+
+      const result = await saveForAnotherSignature({
+        points,
+        inputType: 'mouse',
+        targetTable: 'profiles',
+        targetId: 'user-1',
+      });
+
+      expect(result).toBe('new-signature-id');
+      expect(global.fetch).toHaveBeenCalledWith('/api/signatures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          points,
+          inputType: 'mouse',
+          userForForgery: false,
+          targetTable: 'profiles',
+          targetId: 'user-1',
+        }),
+      });
+    });
+
+    it('should handle network errors', async () => {
+      const { saveForAnotherSignature } = require('../signature-utils');
+
+      const points = createTestPoints(10);
+
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      await expect(
+        saveForAnotherSignature({
+          points,
+          targetTable: 'profiles',
+          targetId: 'user-1',
+        })
+      ).rejects.toThrow('Network error');
+    });
+  });
+
+  describe('toggleUserForForgery', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      window.dispatchEvent = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should toggle userForForgery successfully', async () => {
+      const { toggleUserForForgery } = require('../signature-utils');
+
+      const signature = createTestGenuineSignature('sig-1', 'user-1');
+      signature.user_for_forgery = false;
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ user_for_forgery: true }),
+      });
+
+      const result = await toggleUserForForgery(signature);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/signatures/sig-1?type=genuine',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ userForForgery: true }),
+        }
+      );
+      expect(window.dispatchEvent).toHaveBeenCalled();
+    });
+
+    it('should return original value on error', async () => {
+      const { toggleUserForForgery } = require('../signature-utils');
+
+      const signature = createTestGenuineSignature('sig-1', 'user-1');
+      signature.user_for_forgery = false;
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockResolvedValue({ error: 'Server error' }),
+      });
+
+      const result = await toggleUserForForgery(signature);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('toggleModForForgery', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      window.dispatchEvent = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should toggle modForForgery successfully', async () => {
+      const { toggleModForForgery } = require('../signature-utils');
+
+      const signature = createTestGenuineSignature('sig-1', 'user-1');
+      signature.mod_for_forgery = false;
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ mod_for_forgery: true }),
+      });
+
+      const result = await toggleModForForgery(signature);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/signatures/sig-1?type=genuine',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ modForForgery: true }),
+        }
+      );
+    });
+  });
+
+  describe('toggleModForDataset', () => {
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      window.dispatchEvent = jest.fn();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should toggle modForDataset for genuine signature', async () => {
+      const { toggleModForDataset } = require('../signature-utils');
+
+      const signature = createTestSignature('genuine', {
+        id: 'sig-1',
+        userId: 'user-1',
+      });
+      signature.data.mod_for_dataset = false;
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ mod_for_dataset: true }),
+      });
+
+      const result = await toggleModForDataset(signature);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/signatures/sig-1?type=genuine',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ modForDataset: true }),
+        }
+      );
+    });
+
+    it('should toggle modForDataset for forged signature', async () => {
+      const { toggleModForDataset } = require('../signature-utils');
+
+      const signature = createTestSignature('forged', {
+        id: 'sig-1',
+        userId: 'user-1',
+      });
+      signature.data.mod_for_dataset = false;
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({ mod_for_dataset: true }),
+      });
+
+      const result = await toggleModForDataset(signature);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/signatures/sig-1?type=forged',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ modForDataset: true }),
+        }
+      );
+    });
+  });
+
+  describe('deleteSignature', () => {
+    let mockConfirm: jest.Mock;
+
+    beforeEach(() => {
+      global.fetch = jest.fn();
+      window.dispatchEvent = jest.fn();
+
+      // Получаем замоканную функцию confirm
+      const { confirm } = require('@/components/ui/alert-dialog');
+      mockConfirm = confirm as jest.Mock;
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should delete signature when confirmed', async () => {
+      const { deleteSignature } = require('../signature-utils');
+      const { confirm } = require('@/components/ui/alert-dialog');
+
+      const signature = createTestSignature('genuine', {
+        id: 'sig-1',
+        userId: 'user-1',
+      });
+
+      (confirm as jest.Mock).mockResolvedValue(true);
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+      });
+
+      const result = await deleteSignature(signature);
+
+      expect(result).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/signatures/sig-1?type=genuine',
+        {
+          method: 'DELETE',
+        }
+      );
+      expect(window.dispatchEvent).toHaveBeenCalled();
+    });
+
+    it('should not delete signature when not confirmed', async () => {
+      const { deleteSignature } = require('../signature-utils');
+
+      const signature = createTestSignature('genuine', {
+        id: 'sig-1',
+        userId: 'user-1',
+      });
+
+      mockConfirm.mockResolvedValue(false);
+
+      const result = await deleteSignature(signature);
+
+      expect(result).toBe(false);
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('should return false on API error', async () => {
+      const { deleteSignature } = require('../signature-utils');
+
+      const signature = createTestSignature('genuine', {
+        id: 'sig-1',
+        userId: 'user-1',
+      });
+
+      mockConfirm.mockResolvedValue(true);
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: jest.fn().mockResolvedValue({ error: 'Server error' }),
+      });
+
+      const result = await deleteSignature(signature);
+
+      expect(result).toBe(false);
     });
   });
 });

@@ -75,8 +75,12 @@ test.describe('Sign-up page', () => {
   test('should have link to login page', async ({ page }) => {
     await page.goto('/auth/sign-up');
 
-    const loginLink = page.getByRole('link', { name: /Войти/i });
-    await expect(loginLink).toBeVisible();
+    // Ждем загрузки страницы
+    await page.waitForLoadState('networkidle');
+
+    // Ищем ссылку "Войти" в основном контенте (используем first() чтобы избежать strict mode violation)
+    const loginLink = page.getByRole('link', { name: /Войти/i }).first();
+    await expect(loginLink).toBeVisible({ timeout: 5000 });
     await expect(loginLink).toHaveAttribute('href', '/auth/login');
   });
 

@@ -293,7 +293,7 @@ export function formatForgeryResult(result: ForgeryAnalysisResponse) {
     Math.round(result.similarity_score * 100),
     0
   );
-  // Определяем подлинность на фронтенде: >90% -> подлинная, иначе подделка
+  // Определяем подлинность на фронтенде: >85% -> подлинная, иначе подделка
   const isGenuine = similarityPercent > 85;
   const threshold = 85; // Фронтенд порог
 

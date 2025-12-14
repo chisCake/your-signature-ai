@@ -1,28 +1,19 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+import 'jest-canvas-mock';
 
-// Mock Canvas API
-global.HTMLCanvasElement.prototype.getContext = jest.fn(() => {
-  return {
-    fillStyle: '',
-    strokeStyle: '',
-    lineWidth: 0,
-    lineCap: '',
-    lineJoin: '',
-    fillRect: jest.fn(),
-    beginPath: jest.fn(),
-    moveTo: jest.fn(),
-    lineTo: jest.fn(),
-    stroke: jest.fn(),
-  };
-});
-
+// Mock Canvas API (jest-canvas-mock уже предоставляет базовые моки)
+// Дополнительно мокируем toDataURL для возврата предсказуемого значения
 global.HTMLCanvasElement.prototype.toDataURL = jest.fn(
   () => 'data:image/png;base64,mock'
 );
 
+// Next.js Link мокируется через __mocks__ директорию
+
 // Mock document.createElement for download tests
 const originalCreateElement = document.createElement;
+// Экспортируем originalCreateElement для использования в тестах
+global.originalCreateElement = originalCreateElement;
 document.createElement = jest.fn(tagName => {
   if (tagName === 'a') {
     return {
@@ -39,3 +30,12 @@ document.createElement = jest.fn(tagName => {
 
 // Mock window.dispatchEvent
 window.dispatchEvent = jest.fn();
+
+// Mock AbortSignal.timeout (не поддерживается в jsdom)
+if (!AbortSignal.timeout) {
+  AbortSignal.timeout = function (ms) {
+    // Создаем объект, похожий на AbortSignal
+    const controller = new AbortController();
+    return controller.signal;
+  };
+}

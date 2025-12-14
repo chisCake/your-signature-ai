@@ -117,3 +117,12 @@ jspm_packages/
 # Project Specific
 # ===========================================
 TODO.md
+
+# ===========================================
+# Markdown Files (except README.md and docs/)
+# ===========================================
+# Ignore all markdown files except README.md and docs/
+*.md
+!README.md
+!**/README.md
+!docs/**/*.md

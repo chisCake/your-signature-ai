@@ -1,6 +1,35 @@
-import { cn } from '@/lib/utils/client-utils';
+import { cn, getProfile, getSignatureOwner } from '@/lib/utils/client-utils';
+import {
+  getProfile as getProfileQuery,
+  getPseudouser,
+} from '@/lib/supabase/queries';
+import {
+  createTestProfile,
+  createTestPseudouser,
+  createTestSignature,
+} from '@/lib/__tests__/test-helpers';
+
+// Моки для зависимостей
+jest.mock('@/lib/supabase/queries', () => ({
+  getProfile: jest.fn(),
+  getPseudouser: jest.fn(),
+}));
+
+const mockGetProfileQuery = getProfileQuery as jest.MockedFunction<
+  typeof getProfileQuery
+>;
+const mockGetPseudouser = getPseudouser as jest.MockedFunction<
+  typeof getPseudouser
+>;
 
 describe('client-utils', () => {
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {} as any;
+    jest.clearAllMocks();
+  });
+
   describe('cn', () => {
     it('should merge class names correctly', () => {
       const result = cn('class1', 'class2', 'class3');
@@ -115,6 +144,154 @@ describe('client-utils', () => {
       expect(result).toContain('string-class');
       expect(result).toContain('object-class');
       expect(result).toContain('another-string');
+    });
+  });
+
+  describe('getProfile', () => {
+    it('should return profile when found', async () => {
+      const mockProfile = createTestProfile('user-123', 'user', 'Test User');
+      mockGetProfileQuery.mockResolvedValue(mockProfile);
+
+      const result = await getProfile('user-123', mockClient);
+
+      expect(mockGetProfileQuery).toHaveBeenCalledWith('user-123', mockClient);
+      expect(result).toEqual(mockProfile);
+    });
+
+    it('should return null when profile not found', async () => {
+      mockGetProfileQuery.mockResolvedValue(null);
+
+      const result = await getProfile('non-existent', mockClient);
+
+      expect(mockGetProfileQuery).toHaveBeenCalledWith(
+        'non-existent',
+        mockClient
+      );
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('getSignatureOwner', () => {
+    describe('genuine signatures', () => {
+      it('should return profile user when genuine signature has user_id', async () => {
+        const mockProfile = createTestProfile('user-123', 'user', 'Test User');
+        const signature = createTestSignature('genuine', {
+          userId: 'user-123',
+        });
+
+        mockGetProfileQuery.mockResolvedValue(mockProfile);
+
+        const result = await getSignatureOwner(signature, mockClient);
+
+        expect(mockGetProfileQuery).toHaveBeenCalledWith(
+          'user-123',
+          mockClient
+        );
+        expect(result).toEqual({
+          type: 'user',
+          data: mockProfile,
+        });
+      });
+
+      it('should return null when genuine signature has no user_id (external dataset)', async () => {
+        const signature = createTestSignature('genuine', {
+          userId: undefined,
+        });
+
+        const result = await getSignatureOwner(signature, mockClient);
+
+        expect(mockGetProfileQuery).not.toHaveBeenCalled();
+        expect(result).toBeNull();
+      });
+
+      it('should return null when profile not found for genuine signature', async () => {
+        const signature = createTestSignature('genuine', {
+          userId: 'user-123',
+        });
+
+        mockGetProfileQuery.mockResolvedValue(null);
+
+        const result = await getSignatureOwner(signature, mockClient);
+
+        expect(mockGetProfileQuery).toHaveBeenCalledWith(
+          'user-123',
+          mockClient
+        );
+        expect(result).toBeNull();
+      });
+    });
+
+    describe('forged signatures', () => {
+      it('should return pseudouser when forged signature has forger_id', async () => {
+        const mockPseudouser = createTestPseudouser(
+          'pseudo-123',
+          'Test Pseudouser'
+        );
+        // Создаем forged подпись напрямую, чтобы точно установить forger_id
+        const signature: Signature = {
+          type: 'forged',
+          data: {
+            id: 'forged-123',
+            original_signature_id: 'orig-123',
+            features_table: 't,x,y,p\n100,10,20,0.5',
+            input_type: 'mouse',
+            mod_for_dataset: true,
+            forger_id: 'pseudo-123',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        };
+
+        mockGetPseudouser.mockResolvedValue(mockPseudouser);
+
+        const result = await getSignatureOwner(signature, mockClient);
+
+        expect(mockGetPseudouser).toHaveBeenCalledWith(
+          'pseudo-123',
+          mockClient
+        );
+        expect(result).not.toBeNull();
+        expect(result?.type).toBe('pseudouser');
+        expect(result?.data).toEqual(mockPseudouser);
+      });
+
+      it('should return null when forged signature has no forger_id (external dataset)', async () => {
+        const signature = createTestSignature('forged', {
+          forgerId: undefined,
+        });
+
+        const result = await getSignatureOwner(signature, mockClient);
+
+        expect(mockGetPseudouser).not.toHaveBeenCalled();
+        expect(result).toBeNull();
+      });
+
+      it('should return null when pseudouser not found for forged signature', async () => {
+        // Создаем forged подпись напрямую, чтобы точно установить forger_id
+        const signature: Signature = {
+          type: 'forged',
+          data: {
+            id: 'forged-123',
+            original_signature_id: 'orig-123',
+            features_table: 't,x,y,p\n100,10,20,0.5',
+            input_type: 'mouse',
+            mod_for_dataset: true,
+            forger_id: 'pseudo-123',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        };
+
+        mockGetPseudouser.mockResolvedValue(null);
+
+        const result = await getSignatureOwner(signature, mockClient);
+
+        expect(mockGetPseudouser).toHaveBeenCalledWith(
+          'pseudo-123',
+          mockClient
+        );
+        expect(result).toBeNull();
+      });
     });
   });
 });

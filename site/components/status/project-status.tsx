@@ -3,7 +3,12 @@
 import { ChevronUp, LoaderCircle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-export type ComponentStatus = 'up' | 'down' | 'checking' | 'unknown';
+export type ComponentStatus =
+  | 'up'
+  | 'down'
+  | 'checking'
+  | 'unknown'
+  | 'stopped';
 
 export interface ComponentHealth {
   status: ComponentStatus;

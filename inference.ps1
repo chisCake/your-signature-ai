@@ -25,7 +25,7 @@ Set-Location "inference"
 
 # Запускаем uvicorn сервер
 Write-Host "Запуск uvicorn сервера..." -ForegroundColor Yellow
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers $w
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers $w --access-log
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Ошибка при запуске uvicorn сервера"

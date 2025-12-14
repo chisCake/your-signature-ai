@@ -23,3 +23,6 @@ export const testUsers: Record<TestUserKey, TestUser> = {
     role: 'user',
   },
 };
+
+// Default export for compatibility
+export default { testUsers };

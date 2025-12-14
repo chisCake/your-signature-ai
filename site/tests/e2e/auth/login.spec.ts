@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { testUsers } from '@/tests/e2e/setup/fixtures';
+import { testUsers } from '@/tests/e2e/setup/fixtures.mts';
 
 test.describe('Login page', () => {
   test('should display login form', async ({ page }) => {
