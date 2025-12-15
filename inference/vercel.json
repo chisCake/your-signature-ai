@@ -1,0 +1,12 @@
+{
+  "buildCommand": "pip install --no-cache-dir -r requirements.txt",
+  "installCommand": "pip install --no-cache-dir -r requirements.txt",
+  "framework": null,
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+# Исключаем ненужные файлы из билда для уменьшения размера
+
+# Python кэш и скомпилированные файлы
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Виртуальные окружения
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# Логи
+*.log
+logs/
+
+# Тестовые файлы и данные
+tests/
+test_*.py
+*_test.py
+# Модели (.pt файлы) загружаются из blob storage в продакшене
+*.pt
+**/*.pt
+models/*.pt
+models/**/*.pt
+
+# Документация
+README.md
+*.md
+docs/
+
+# Конфигурация для других платформ
+render_env_vars.txt
+start.ps1
+*.ps1
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Временные файлы
+*.tmp
+*.bak
+*.cache
+*.swp
+.DS_Store
+
+# Другие ненужные файлы
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+

@@ -232,7 +232,9 @@ export function ProjectStatus({ compact = false }: ProjectStatusProps) {
       const startTime = Date.now();
       try {
         const inferenceUrl =
-          process.env.NEXT_PUBLIC_INFERENCE_URL || 'http://localhost:8000';
+          process.env.NEXT_PUBLIC_INFERENCE_URL ||
+          process.env.NEXT_PUBLIC_INFERENCE_SERVER_URL ||
+          'http://localhost:8000';
 
         // console.log(
         //   `[ProjectStatus] Проверка Inference сервера по адресу: ${inferenceUrl}/health`

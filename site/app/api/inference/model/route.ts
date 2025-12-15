@@ -6,7 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     const inferenceUrl =
-      process.env.NEXT_PUBLIC_INFERENCE_URL || 'http://localhost:8000';
+      process.env.NEXT_PUBLIC_INFERENCE_URL ||
+      process.env.NEXT_PUBLIC_INFERENCE_SERVER_URL ||
+      'http://localhost:8000';
 
     const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get('type') || 'all'; // 'code', 'info', 'all'
