@@ -254,16 +254,17 @@ export function ModelStatusSection() {
                 <div className='flex-1'>
                   <div className='flex items-center gap-2 mb-1'>
                     <h3 className='font-medium'>{name}</h3>
-                    {model.is_active && (
+                    {model.is_active ? (
                       <span className='px-2 py-0.5 text-xs font-medium bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded'>
                         Активна
                       </span>
+                    ) : (
+                      <span
+                        className={`text-xs font-medium ${getStateColor(model.state)}`}
+                      >
+                        {getStateLabel(model.state)}
+                      </span>
                     )}
-                    <span
-                      className={`text-xs font-medium ${getStateColor(model.state)}`}
-                    >
-                      {getStateLabel(model.state)}
-                    </span>
                   </div>
                   {model.error && (
                     <div className='flex items-start gap-2 mt-2 p-2 bg-red-50 dark:bg-red-950 rounded text-xs text-red-700 dark:text-red-300'>
