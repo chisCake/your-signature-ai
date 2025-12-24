@@ -225,7 +225,7 @@ export function ComparisonResultModal({
           <Button onClick={onClose} variant='outline'>
             Закрыть
           </Button>
-          {formattedResult && (
+          {/*formattedResult && (
             <Button
               onClick={() => {
                 // Можно добавить дополнительную функциональность
@@ -235,7 +235,7 @@ export function ComparisonResultModal({
             >
               Подробнее
             </Button>
-          )}
+          )}*/}
         </div>
       </div>
     </div>

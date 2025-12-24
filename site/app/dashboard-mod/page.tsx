@@ -233,7 +233,7 @@ export default function ModDashboard() {
             <CardHeader>
               <CardTitle className='flex items-center gap-2'>
                 <SignatureIcon className='h-5 w-5' />
-                Контроллируемое добавление
+                Контролируемое добавление
               </CardTitle>
               <CardDescription>
                 Добавление подписей от имени пользователей

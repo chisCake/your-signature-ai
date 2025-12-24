@@ -22,7 +22,7 @@ export function ActionPageList() {
         Пользователи
       </Link>
       <Link href='/controlled-signature-addition' className={LINK_CLASSES}>
-        Контроллируемое добавление
+        Контролируемое добавление
       </Link>
       {/* {isAdmin && (
         <>
