@@ -7,7 +7,7 @@ const LINK_CLASSES =
   'px-3 py-2 w-full lg:w-auto rounded-md hover:bg-accent hover:text-accent-foreground transition-colors';
 
 export function ActionPageList() {
-  const { isMod, isAdmin } = useUser();
+  const { isMod } = useUser();
 
   if (!isMod) {
     return null;
@@ -22,9 +22,9 @@ export function ActionPageList() {
         Пользователи
       </Link>
       <Link href='/controlled-signature-addition' className={LINK_CLASSES}>
-        Контроллируемое добавление
+        Контролируемое добавление
       </Link>
-      {isAdmin && (
+      {/* {isAdmin && (
         <>
           <Link href='/' className={LINK_CLASSES}>
             ИИ Сервер
@@ -33,7 +33,7 @@ export function ActionPageList() {
             Импорт/Экспорт
           </Link>
         </>
-      )}
+      )} */}
     </div>
   );
 }

@@ -37,12 +37,13 @@ export async function getUserProfile(
   client?: SupabaseClient
 ): Promise<Profile | null> {
   try {
-    const user = await getUser(client);
+    const supabase = client || (await createServerClient());
+    const user = await getUser(supabase);
     if (!user?.sub) {
       return null;
     }
 
-    const profile = await getProfile(user.sub, client);
+    const profile = await getProfile(user.sub, supabase);
 
     if (!profile) {
       return null;

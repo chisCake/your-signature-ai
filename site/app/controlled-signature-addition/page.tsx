@@ -28,7 +28,7 @@ const CANVAS_SIZE = `w-[560px] h-[420px]
                    xl:w-[580px] xl:h-[435px]`;
 
 export default function ControlledSignatureAddition() {
-  usePageTitle({ title: 'Контроллируемое добавление подписей' });
+  usePageTitle({ title: 'Контролируемое добавление подписей' });
 
   const [message, setMessage] = useState<string>('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);

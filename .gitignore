@@ -113,7 +113,20 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
+# Python virtual environments
+.venv/
+venv/
+
 # ===========================================
 # Project Specific
 # ===========================================
 TODO.md
+
+# ===========================================
+# Markdown Files (except README.md and docs/)
+# ===========================================
+# Ignore all markdown files except README.md and docs/
+*.md
+!README.md
+!**/README.md
+!docs/**/*.md

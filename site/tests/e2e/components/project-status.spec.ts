@@ -24,7 +24,9 @@ test.describe('Project Status Component', () => {
     await expect(dropdown).toBeVisible();
   });
 
-  test('should display all component statuses in dropdown', async ({ page }) => {
+  test('should display all component statuses in dropdown', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Открываем дропдаун
@@ -37,7 +39,9 @@ test.describe('Project Status Component', () => {
     await expect(page.locator('text=ИИ Сервер')).toBeVisible();
   });
 
-  test('should display status indicators (colored circles)', async ({ page }) => {
+  test('should display status indicators (colored circles)', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     // Открываем дропдаун
@@ -80,4 +84,3 @@ test.describe('Project Status Component', () => {
     await expect(refreshButton).toBeVisible();
   });
 });
-

@@ -2,6 +2,15 @@
   "name": "your-sign-ai",
   "private": true,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chisCake/your-signature-ai.git"
+  },
+  "author": {
+    "name": "Олешкевич Кирилл",
+    "email": "kirilloleshkevich7@gmail.com",
+    "url": "https://github.com/chisCake"
+  },
   "workspaces": [
     "site",
     "inference",

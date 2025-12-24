@@ -8,11 +8,7 @@ from typing import Optional, List, Union
 import logging
 import torch
 import torch.nn.functional as F
-import numpy as np
 
-# --- ИСПРАВЛЕННЫЙ ИМПОРТ ЗАВИСИМОСТЕЙ ---
-# Импортируем функции зависимостей из dependencies.py
-# Это устраняет проблему циклического импорта
 from dependencies import get_supabase_client, get_model_loader
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
@@ -149,6 +145,6 @@ async def analyze_forgery_by_data(
         return ForgeryAnalysisResponse(
             is_forgery=False,
             similarity_score=0.0,
-            threshold=0.75,
+            threshold=threshold,
             error=f"Analysis failed: {type(e).__name__}: {str(e)}",
         )

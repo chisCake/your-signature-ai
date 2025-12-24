@@ -51,19 +51,6 @@ export default function AdminDashboard() {
 
       {/* Секция загрузки моделей */}
       <ModelUploadSection />
-
-      {/* Остальные секции */}
-      <DashboardSection title='Общее'>
-        <p>Placeholder</p>
-      </DashboardSection>
-
-      <DashboardSection title='Обзор токенов'>
-        <p>Placeholder</p>
-      </DashboardSection>
-
-      <DashboardSection title='Создание пользователей'>
-        <p>Placeholder</p>
-      </DashboardSection>
     </div>
   );
 }

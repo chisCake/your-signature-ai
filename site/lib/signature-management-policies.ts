@@ -131,7 +131,11 @@ export async function canDeleteSignature(
   const { user, userRole, owner } = data;
 
   if (userRole === 'user')
-    return owner !== null && signatureBelongsToUser(owner);
+    return (
+      owner !== null &&
+      signatureBelongsToUser(owner) &&
+      userIsOwner(user, owner)
+    );
 
   if (!owner) return true;
 

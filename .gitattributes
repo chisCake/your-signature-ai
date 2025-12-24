@@ -1,9 +1,4 @@
-# Устанавливаем CRLF для всех текстовых файлов
-* text eol=crlf
-
-# Исключения для файлов, которые должны оставаться с LF
-*.sh text eol=lf
-*.bash text eol=lf
+* text eol=lf
 
 # Бинарные файлы
 *.pt binary
@@ -22,4 +17,3 @@
 *.ttf binary
 *.eot binary
 *.otf binary
-
