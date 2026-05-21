@@ -24,7 +24,7 @@ class PKSampler(Sampler[int]):
         epoch_multiplier: int = 1,
         use_all_data: bool = True,
     ) -> None:
-        super().__init__(None)
+        super().__init__()
         self.labels = labels
         self.P = P
         self.K = K
