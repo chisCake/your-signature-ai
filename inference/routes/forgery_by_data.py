@@ -12,7 +12,11 @@ import torch.nn.functional as F
 from dependencies import get_supabase_client, get_model_loader
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
-from utils.preprocessing import preprocess_signature_data, parse_csv_signature_data
+from utils.preprocessing import (
+    preprocess_signature_data,
+    parse_csv_signature_data,
+    resolve_preprocess_version,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -91,12 +95,15 @@ async def analyze_forgery_by_data(
             )
 
         # --- Шаг 3: Препроцессинг и подготовка тензоров ---
-        # Определяем версию модели из model_loader
-        model_info = model_loader.get_model_info()
-        model_version = model_info.get("module", "models.v1").split(".")[-1] if "." in model_info.get("module", "") else "v1"
-        
-        original_features = preprocess_signature_data(original_data, model_version=model_version)
-        forgery_features = preprocess_signature_data(forgery_data, model_version=model_version)
+        model_version = resolve_preprocess_version(model_loader=model_loader)
+        logger.info(f"Using preprocessing version: {model_version}")
+
+        original_features = preprocess_signature_data(
+            original_data, model_version=model_version
+        )
+        forgery_features = preprocess_signature_data(
+            forgery_data, model_version=model_version
+        )
 
         # Преобразуем в тензоры PyTorch
         original_tensor = torch.from_numpy(original_features).float().unsqueeze(0)

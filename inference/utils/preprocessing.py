@@ -170,31 +170,59 @@ def v1_preprocess_signature_data(
         raise
 
 
+def resolve_preprocess_version(
+    model_loader: Any = None,
+    model_info: Optional[Dict[str, Any]] = None,
+) -> str:
+    """
+    Определяет версию препроцессинга (v1/v2) по загруженной модели.
+
+    Приоритет: in_features из checkpoint, затем суффикс module, затем MODEL_NAME.
+    """
+    import os
+
+    if model_info is None and model_loader is not None:
+        model_info = model_loader.get_model_info()
+
+    if model_info and model_info.get("status") != "not_loaded":
+        model_config = model_info.get("model_config") or {}
+        in_features = model_config.get("in_features")
+        if in_features == 21:
+            return "v2"
+        if in_features == 11:
+            return "v1"
+
+        module = model_info.get("module", "")
+        if "." in module:
+            suffix = module.split(".")[-1]
+            if suffix in ("v1", "v2"):
+                return suffix
+
+    return os.getenv("MODEL_NAME", "v1")
+
+
 def preprocess_signature_data(
     signature_data: Union[List[List[float]], np.ndarray, torch.Tensor],
     model_version: Optional[str] = None,
+    model_loader: Any = None,
 ) -> np.ndarray:
     """
     Универсальная функция предобработки данных подписи
 
     Args:
         signature_data: Данные подписи в формате [[t1, x1, y1, p1], [t2, x2, y2, p2], ...]
-        model_version: Версия модели ("v1" или "v2"). Если None, определяется из MODEL_NAME
+        model_version: Версия модели ("v1" или "v2"). Если None — из model_loader или MODEL_NAME
+        model_loader: Загрузчик модели для автоопределения версии по in_features
 
     Returns:
         np.ndarray: Предобработанные данные готовые для модели
     """
-    # Определяем версию модели из переменной окружения, если не указана
     if model_version is None:
-        import os
-
-        model_name = os.getenv("MODEL_NAME", "v1")
-        model_version = model_name
+        model_version = resolve_preprocess_version(model_loader=model_loader)
 
     if model_version == "v2":
         return v2_preprocess_signature_data(signature_data)
-    else:
-        return v1_preprocess_signature_data(signature_data)
+    return v1_preprocess_signature_data(signature_data)
 
 
 def _safe_div(a: np.ndarray, b: np.ndarray, eps: float = 1e-6) -> np.ndarray:
