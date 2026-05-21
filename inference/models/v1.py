@@ -6,13 +6,14 @@ import torch.nn.functional as F
 
 class AttentionPool(nn.Module):
     """Temporal attention pooling for variable-length sequences.
-       Input: (B, T, D) -> Output: (B, D)"""
+    Input: (B, T, D) -> Output: (B, D)"""
+
     def __init__(self, in_dim):
         super().__init__()
         self.attn = nn.Sequential(
             nn.Linear(in_dim, max(in_dim // 2, 16)),
             nn.Tanh(),
-            nn.Linear(max(in_dim // 2, 16), 1)
+            nn.Linear(max(in_dim // 2, 16), 1),
         )
 
     def forward(self, x, mask=None):
@@ -28,47 +29,52 @@ class AttentionPool(nn.Module):
 
 
 class SignatureEncoder(nn.Module):
-    """CNN(1D) -> BiGRU -> Attention -> FC -> L2-normalized embedding.
+    """CNN(1D) -> BiGRU -> Attention -> FC -> L2-normalized embedding"""
 
-    Supports a variable number of CNN layers determined by len(conv_channels).
-    Conv layers are registered as self.conv1, self.conv2, ... so that state_dict
-    keys match checkpoints produced by the training codebase.
-    Each block uses kernel_size=3 with same-padding followed by MaxPool1d(2),
-    giving a total temporal downsampling factor of 2^len(conv_channels).
-    """
-    def __init__(self,
-                 in_features: int = 10,
-                 conv_channels=(64, 128, 256),
-                 gru_hidden: int = 256,
-                 gru_layers: int = 3,
-                 emb_dim: int = 256,
-                 dropout: float = 0.3):
+    def __init__(
+        self,
+        in_features: int = 10,
+        conv_channels=(64, 128),
+        gru_hidden: int = 256,
+        gru_layers: int = 2,
+        emb_dim: int = 128,
+        dropout: float = 0.3,
+    ):
         super().__init__()
-
-        # Build conv blocks as named attributes (conv1, conv2, conv3, ...)
-        # so that state_dict keys are conv1.*, conv2.*, conv3.* — matching training checkpoints.
-        self._conv_names = []
-        in_ch = in_features
-        for i, out_ch in enumerate(conv_channels):
-            name = f"conv{i + 1}"
-            layer = nn.Sequential(
-                nn.Conv1d(in_ch, out_ch, kernel_size=3, padding=1),
-                nn.BatchNorm1d(out_ch),
+        # conv stack: input shape (B, F, T)
+        self.conv1 = nn.Sequential(
+            nn.Conv1d(in_features, conv_channels[0], kernel_size=3, padding=1),
+            nn.BatchNorm1d(conv_channels[0]),
+            nn.ReLU(inplace=True),
+            nn.MaxPool1d(kernel_size=2),
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv1d(conv_channels[0], conv_channels[1], kernel_size=5, padding=2),
+            nn.BatchNorm1d(conv_channels[1]),
+            nn.ReLU(inplace=True),
+            nn.MaxPool1d(kernel_size=2),
+        )
+        # Добавляем третий conv слой для более глубокой архитектуры
+        if len(conv_channels) > 2:
+            self.conv3 = nn.Sequential(
+                nn.Conv1d(conv_channels[1], conv_channels[2], kernel_size=5, padding=2),
+                nn.BatchNorm1d(conv_channels[2]),
                 nn.ReLU(inplace=True),
-                nn.MaxPool1d(kernel_size=2)
+                nn.MaxPool1d(kernel_size=2),
             )
-            setattr(self, name, layer)
-            self._conv_names.append(name)
-            in_ch = out_ch
+            gru_input_size = conv_channels[2]
+        else:
+            self.conv3 = None
+            gru_input_size = conv_channels[1]
 
-        # GRU expects input (B, T', C) where C is the last conv channel
+        # GRU expects input (B, T', C)
         self.bigru = nn.GRU(
-            input_size=conv_channels[-1],
+            input_size=gru_input_size,
             hidden_size=gru_hidden,
             num_layers=gru_layers,
             batch_first=True,
             bidirectional=True,
-            dropout=dropout if gru_layers > 1 else 0.0
+            dropout=dropout if gru_layers > 1 else 0.0,
         )
 
         self.attn = AttentionPool(gru_hidden * 2)
@@ -76,9 +82,10 @@ class SignatureEncoder(nn.Module):
             nn.Linear(gru_hidden * 2, 512),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout),
-            nn.Linear(512, emb_dim)
+            nn.Linear(512, emb_dim),
         )
 
+        # Initialize weights properly
         self.apply(self._init_weights)
 
     def forward(self, x, mask=None):
@@ -89,26 +96,36 @@ class SignatureEncoder(nn.Module):
         """
         # Permute for Conv1d: (B, F, T)
         x = x.permute(0, 2, 1)
-        for name in self._conv_names:
-            x = getattr(self, name)(x)
+        x = self.conv1(x)
+        x = self.conv2(x)
+        if self.conv3 is not None:
+            x = self.conv3(x)
         # Now x shape (B, C, T')
         x = x.permute(0, 2, 1)  # (B, T', C)
 
-        # Downsample mask by 2^n_layers (one MaxPool2 per conv block)
+        # If mask provided, we need to downsample mask similarly
         if mask is not None:
-            m = mask.float().unsqueeze(1)  # (B, 1, T)
-            for _ in self._conv_names:
-                m = F.max_pool1d(m, kernel_size=2, stride=2)
-            mask = m.squeeze(1).bool()  # (B, T')
+            # reduce mask by factor 4 (2 conv layers) or 8 (3 conv layers)
+            mask = mask.float().unsqueeze(1)  # (B,1,T)
+            mask = F.max_pool1d(mask, kernel_size=2, stride=2)
+            mask = F.max_pool1d(mask, kernel_size=2, stride=2)
+            if self.conv3 is not None:
+                mask = F.max_pool1d(mask, kernel_size=2, stride=2)
+            mask = mask.squeeze(1).bool()  # (B, T')
 
+        # RNN
+        # flatten_parameters for speed/compatibility
         self.bigru.flatten_parameters()
         out, _ = self.bigru(x)  # (B, T', 2*gru_hidden)
 
         pooled, attn_weights = self.attn(out, mask=mask)  # (B, 2*gru_hidden)
         emb = self.fc(pooled)  # (B, emb_dim)
 
+        # Check for NaN/Inf - should not happen with proper feature preprocessing
         if torch.isnan(emb).any() or torch.isinf(emb).any():
-            raise RuntimeError("NaN/Inf detected in embeddings. This indicates a problem in feature preprocessing.")
+            raise RuntimeError(
+                "NaN/Inf detected in embeddings. This indicates a problem in feature preprocessing."
+            )
 
         emb = F.normalize(emb, p=2, dim=-1)  # L2 normalize
         return emb
@@ -120,12 +137,21 @@ class SignatureEncoder(nn.Module):
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
         elif isinstance(module, nn.Conv1d):
-            nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+            nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
         elif isinstance(module, nn.GRU):
             for name, param in module.named_parameters():
-                if 'weight' in name:
-                    nn.init.xavier_uniform_(param)
-                elif 'bias' in name:
+                if "weight" in name:
+                    # Более консервативная инициализация для GRU (orthogonal для рекуррентных весов)
+                    if len(param.shape) >= 2:
+                        # Для рекуррентных весов используем orthogonal инициализацию
+                        if "weight_hh" in name:
+                            nn.init.orthogonal_(param)
+                        else:
+                            # Для входных весов используем xavier с меньшим gain
+                            nn.init.xavier_uniform_(param, gain=0.5)
+                    else:
+                        nn.init.xavier_uniform_(param, gain=0.5)
+                elif "bias" in name:
                     nn.init.zeros_(param)
