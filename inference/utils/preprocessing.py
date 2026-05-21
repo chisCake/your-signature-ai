@@ -177,28 +177,45 @@ def resolve_preprocess_version(
     """
     Определяет версию препроцессинга (v1/v2) по загруженной модели.
 
-    Приоритет: in_features из checkpoint, затем суффикс module, затем MODEL_NAME.
+    Приоритет:
+      1. model_config.in_features из checkpoint (>= 21 → "v2", иначе "v1")
+      2. суффикс module ("v1"/"v2")
+      3. переменная окружения MODEL_NAME (default "v1")
     """
     import os
 
     if model_info is None and model_loader is not None:
-        model_info = model_loader.get_model_info()
+        try:
+            model_info = model_loader.get_model_info()
+        except Exception as exc:
+            logger.warning(f"resolve_preprocess_version: get_model_info() failed: {exc}")
+            model_info = None
 
     if model_info and model_info.get("status") != "not_loaded":
         model_config = model_info.get("model_config") or {}
         in_features = model_config.get("in_features")
-        if in_features == 21:
-            return "v2"
-        if in_features == 11:
-            return "v1"
+
+        if isinstance(in_features, int):
+            version = "v2" if in_features >= 12 else "v1"
+            logger.info(
+                f"resolve_preprocess_version: in_features={in_features} → {version}"
+            )
+            return version
 
         module = model_info.get("module", "")
         if "." in module:
             suffix = module.split(".")[-1]
             if suffix in ("v1", "v2"):
+                logger.info(
+                    f"resolve_preprocess_version: module suffix '{suffix}' → {suffix}"
+                )
                 return suffix
 
-    return os.getenv("MODEL_NAME", "v1")
+    env_version = os.getenv("MODEL_NAME", "v1")
+    logger.info(
+        f"resolve_preprocess_version: fallback to MODEL_NAME env → {env_version}"
+    )
+    return env_version
 
 
 def preprocess_signature_data(
