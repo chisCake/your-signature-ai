@@ -111,31 +111,26 @@ def initialize_model() -> ModelLoader:
         raise
 
 
-def initialize_model_manager() -> ModelManager:
-    """Инициализация менеджера моделей"""
+def initialize_model_manager(supabase=None) -> ModelManager:
+    """Инициализация менеджера моделей (Blob registry + slot current/previous)."""
     try:
-        # Получаем путь к начальной модели
-        model_path = os.getenv("MODEL_PATH")
-        model_name = os.getenv("MODEL_NAME", "v1")
+        model_name = os.getenv("MODEL_NAME", "temp-quick")
         environment = os.getenv("ENVIRONMENT", "development").lower()
 
-        # Если MODEL_PATH не задан, формируем путь из MODEL_NAME
-        if not model_path:
-            model_path = f"models/{model_name}.pt"
-
         blob_client = None
-        if environment == "production":
-            blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
-            if not blob_token:
-                raise ValueError("BLOB_READ_WRITE_TOKEN is required in production")
+        blob_token = os.getenv("BLOB_READ_WRITE_TOKEN")
+        if blob_token:
             blob_client = BlobClient(blob_token)
-            logger.info("Blob storage enabled for production environment")
+            logger.info("Blob storage enabled (token present)")
+        elif environment == "production":
+            raise ValueError("BLOB_READ_WRITE_TOKEN is required in production")
 
-        logger.info(f"Initializing ModelManager with initial model: {model_path}")
+        logger.info("Initializing ModelManager MODEL_NAME=%s", model_name)
         manager = ModelManager(
-            initial_model_path=model_path,
+            model_name=model_name,
             blob_client=blob_client,
             environment=environment,
+            supabase_client=supabase,
         )
 
         logger.info("ModelManager initialized successfully")
@@ -161,7 +156,7 @@ async def lifespan(app: FastAPI):
         set_supabase_client(supabase_client)
 
         # Инициализация менеджера моделей (новый способ)
-        model_manager = initialize_model_manager()
+        model_manager = initialize_model_manager(supabase=supabase_client)
         set_model_manager(model_manager)
 
         # Для обратной совместимости также устанавливаем model_loader
@@ -171,9 +166,10 @@ async def lifespan(app: FastAPI):
             model_loader = active_model
             set_model_loader(model_loader)
         else:
-            # Fallback к старому способу
-            model_loader = initialize_model()
-            set_model_loader(model_loader)
+            logger.warning(
+                "No active model loaded; forgery endpoints will return 503 until activate"
+            )
+            set_model_loader(None)  # type: ignore[arg-type]
 
         logger.info("Inference server started successfully")
 

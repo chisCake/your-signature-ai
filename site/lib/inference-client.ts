@@ -289,22 +289,22 @@ export function useInferenceServer() {
  * TODO: вынести пороги
  */
 export function formatForgeryResult(result: ForgeryAnalysisResponse) {
+  const threshold = result.threshold ?? 0;
+  const thresholdPct = Math.round(threshold * 100);
   const similarityPercent = Math.max(
     Math.round(result.similarity_score * 100),
     0
   );
-  // Определяем подлинность на фронтенде: >85% -> подлинная, иначе подделка
-  const isGenuine = similarityPercent > 85;
-  const threshold = 85; // Фронтенд порог
+  const isForgery = result.is_forgery;
 
   return {
     similarityPercent,
-    isForgery: !isGenuine, // Обратная логика для совместимости
-    threshold,
+    isForgery,
+    threshold: thresholdPct,
     similarityScore: result.similarity_score,
-    message: isGenuine
-      ? `Подпись признана подлинной (${similarityPercent}% схожести, порог: ${threshold}%)`
-      : `Подпись признана поддельной (${similarityPercent > 0 ? similarityPercent : 0}% схожести, порог: ${threshold}%)`,
+    message: isForgery
+      ? `Подпись признана поддельной (${similarityPercent}% схожести, порог: ${thresholdPct}%)`
+      : `Подпись признана подлинной (${similarityPercent}% схожести, порог: ${thresholdPct}%)`,
   };
 }
 
@@ -312,10 +312,8 @@ export function formatForgeryResult(result: ForgeryAnalysisResponse) {
  * Утилита для определения цвета результата анализа
  */
 export function getForgeryColor(result: ForgeryAnalysisResponse) {
-  const similarityPercent = Math.round(result.similarity_score * 100);
-  if (similarityPercent > 85) return 'text-green-600'; // Подлинная
-  if (similarityPercent > 80) return 'text-yellow-600'; // Сомнительная
-  return 'text-red-600'; // Поддельная
+  if (result.is_forgery) return 'text-red-600';
+  return 'text-green-600';
 }
 
 /**

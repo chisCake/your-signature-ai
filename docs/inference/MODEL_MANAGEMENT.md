@@ -2,7 +2,12 @@
 
 ## Обзор
 
-Система управления моделями позволяет загружать, активировать и переключать ML модели без перезапуска сервера. Поддерживается hotswap моделей с нулевым downtime.
+Inference хранит в Blob только **`models/{bundle_name}.zip`**. На диске Render — максимум **два** распакованных слота:
+
+- `models/current/` — активная модель (forgery + `/about`)
+- `models/previous/` — для `POST /model/rollback`
+
+Старт: `MODEL_NAME` → list Blob → download zip → unpack `current/` → load RAM.
 
 ## Архитектура
 

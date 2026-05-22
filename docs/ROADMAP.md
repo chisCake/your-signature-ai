@@ -10,7 +10,8 @@ Prioritized work items for Your Sign AI. This file is the living backlog; update
 
 ## P1 — Model / inference contract (highest product risk)
 
-- [ ] **Feature pipeline sync**: inference must derive preprocessing / `in_features` from the **active loaded model** metadata (checkpoint / blob manifest), not manual edits in `site/` on every new model
+- [x] **Feature pipeline sync**: bundle `features.py` + `manifest.json` on inference; `models/current/` slot; threshold from manifest
+- [x] **Model bundle zip**: training `export_bundle.py` → Blob `models/{name}.zip`; admin upload/activate/rollback
 - [ ] **Verification threshold**: replace hardcoded `0.7` with value from trained model metadata (same source as features)
 - [ ] **Verification UX**: extend API/UI output (similarity + interpretations / stats) beyond bare `is_forgery`
 

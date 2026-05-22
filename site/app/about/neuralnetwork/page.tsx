@@ -8,29 +8,32 @@ import { Button } from '@/components/ui/button';
 interface ModelCodeResponse {
   code?: string;
   codeError?: string;
+  features?: string;
+  featuresError?: string;
+  artifacts?: {
+    training_summary?: Record<string, number | string>;
+    feature_pipeline?: string[];
+    plots?: Array<{ file: string; title: string; group: string }>;
+  };
+  artifactsError?: string;
   info?: {
-    path?: string;
+    bundle_name?: string;
     device?: string;
     loaded?: boolean;
     model_type?: string;
-    module?: string;
-    file_path?: string;
+    feature_pipeline?: string[];
+    verification_threshold?: number;
+    manifest?: { training_summary?: Record<string, number | string> };
     architecture?: string;
     model_config?: Record<string, unknown>;
     total_parameters?: number;
     trainable_parameters?: number;
-    config?: Record<string, unknown>;
-    available_models?: string[];
   };
   infoError?: string;
   health?: {
     ok?: boolean;
     supabase?: boolean;
-    memory_mb?: number;
-    model?: {
-      name?: string;
-      device?: string;
-    };
+    model?: { name?: string; device?: string; loaded?: boolean } | null;
   };
   error?: string;
 }
@@ -113,6 +116,45 @@ export default function NeuralNetworkPage() {
           <InferenceStatusChecker showDetails autoCheck />
         </div>
       </section>
+
+      {!loading && !data?.info && !data?.codeError && (
+        <section className='p-4 border rounded-lg bg-muted/30'>
+          <p className='text-muted-foreground'>
+            Нет активной модели на inference. Публичная витрина доступна после
+            активации bundle администратором.
+          </p>
+        </section>
+      )}
+
+      {data?.artifacts?.training_summary && (
+        <section className='space-y-3'>
+          <h2 className='text-2xl font-semibold'>Сводка обучения</h2>
+          <div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
+            {Object.entries(data.artifacts.training_summary).map(([k, v]) => (
+              <div key={k} className='border rounded-lg p-3 text-sm'>
+                <div className='text-muted-foreground'>{k}</div>
+                <div className='font-mono'>{String(v)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {data?.artifacts?.feature_pipeline && (
+        <section className='space-y-3'>
+          <h2 className='text-2xl font-semibold'>Feature pipeline</h2>
+          <div className='flex flex-wrap gap-2'>
+            {data.artifacts.feature_pipeline.map((f) => (
+              <span
+                key={f}
+                className='text-xs px-2 py-1 rounded-full bg-muted border'
+              >
+                {f}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Информация о модели */}
       {data?.info && (
@@ -227,13 +269,25 @@ export default function NeuralNetworkPage() {
         </section>
       )}
 
-      {/* Код модели */}
+      {data?.features && (
+        <section className='space-y-4'>
+          <h2 className='text-2xl font-semibold flex items-center gap-2'>
+            <Code className='h-6 w-6' />
+            features.py
+          </h2>
+          <pre className='p-4 bg-muted/50 rounded-lg border overflow-x-auto text-xs font-mono max-h-96'>
+            <code>{data.features}</code>
+          </pre>
+        </section>
+      )}
+
+      {/* Код encoder */}
       {data?.code && (
         <section className='space-y-4'>
           <div className='flex items-center justify-between'>
             <h2 className='text-2xl font-semibold flex items-center gap-2'>
               <Code className='h-6 w-6' />
-              Исходный код модели
+              encoder.py
             </h2>
             <Button
               onClick={() => setShowCode(!showCode)}
@@ -250,6 +304,27 @@ export default function NeuralNetworkPage() {
               </pre>
             </div>
           )}
+        </section>
+      )}
+
+      {data?.artifacts?.plots && data.artifacts.plots.length > 0 && (
+        <section className='space-y-4'>
+          <h2 className='text-2xl font-semibold'>Графики обучения</h2>
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            {data.artifacts.plots.map((plot) => (
+              <figure key={plot.file} className='border rounded-lg p-2'>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/inference/model/plots/${encodeURIComponent(plot.file)}`}
+                  alt={plot.title}
+                  className='w-full h-auto rounded'
+                />
+                <figcaption className='text-xs text-muted-foreground mt-2'>
+                  {plot.title} ({plot.group})
+                </figcaption>
+              </figure>
+            ))}
+          </div>
         </section>
       )}
 

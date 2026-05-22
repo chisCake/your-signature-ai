@@ -4,6 +4,9 @@
 """
 
 from typing import Optional
+
+from fastapi import HTTPException
+
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
 from utils.model_manager import ModelManager
@@ -20,8 +23,8 @@ def set_supabase_client(client: SupabaseClient):
     supabase_client = client
 
 
-def set_model_loader(loader: ModelLoader):
-    """Установка загрузчика модели (для обратной совместимости)"""
+def set_model_loader(loader: Optional[ModelLoader]):
+    """Установка загрузчика модели (может быть None до активации bundle)."""
     global model_loader
     model_loader = loader
 
@@ -40,17 +43,19 @@ def get_supabase_client() -> SupabaseClient:
 
 
 def get_model_loader() -> ModelLoader:
-    """Получение загрузчика модели (для обратной совместимости)"""
-    # Пытаемся получить из менеджера моделей
+    """Active bundle ModelLoader (required for forgery routes)."""
     if model_manager is not None:
         active_model = model_manager.get_active_model()
         if active_model is not None:
             return active_model
-    
-    # Fallback к старому способу
-    if model_loader is None:
-        raise RuntimeError("Model loader not initialized")
-    return model_loader
+
+    if model_loader is not None:
+        return model_loader
+
+    raise HTTPException(
+        status_code=503,
+        detail="No active model loaded. Upload and activate a bundle first.",
+    )
 
 
 def get_model_manager() -> ModelManager:

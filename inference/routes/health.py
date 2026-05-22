@@ -1,15 +1,14 @@
 """
-Health check эндпоинты
+Health check endpoints (model optional).
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
-from utils.supabase_client import SupabaseClient
-from utils.model_loader import ModelLoader
 
-# Импортируем функции для dependency injection из dependencies.py
-from dependencies import get_supabase_client, get_model_loader
+from dependencies import get_model_manager, get_supabase_client
+from utils.supabase_client import SupabaseClient
+from utils.model_manager import ModelManager
 
 logger = logging.getLogger(__name__)
 
@@ -19,68 +18,55 @@ router = APIRouter()
 @router.get("/health")
 async def health_check(
     supabase_client: SupabaseClient = Depends(get_supabase_client),
-    model_loader: ModelLoader = Depends(get_model_loader)
+    model_manager: ModelManager = Depends(get_model_manager),
 ):
-    """Проверка состояния сервера"""
     try:
-        # Получаем информацию о памяти (как в /memory)
-        memory_info = model_loader.get_memory_info()
-        model_info = model_loader.get_model_info()
-        
-        # Извлекаем название файла модели без расширения
-        import os
-        model_name = os.path.splitext(os.path.basename(model_loader.model_path))[0]
-        
+        loader = model_manager.get_active_model()
+        model_block = None
+        if loader:
+            model_info = loader.get_model_info()
+            memory_info = loader.get_memory_info()
+            model_block = {
+                "name": loader.bundle_name,
+                "device": model_info.get("device", "unknown"),
+                "loaded": True,
+                "memory_mb": memory_info.get("rss_mb", 0),
+            }
+
         status = {
             "ok": True,
             "supabase": supabase_client is not None,
-            "memory_mb": memory_info.get("rss_mb", 0),
-            "model": {
-                "name": model_name,
-                "device": model_info.get("device", "unknown")
-            }
+            "model": model_block,
         }
-        
         return JSONResponse(content=status)
-        
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        logger.error("Health check failed: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/memory")
-async def memory_status(
-    model_loader: ModelLoader = Depends(get_model_loader)
-):
-    """Мониторинг использования памяти"""
-    try:
-        memory_info = model_loader.get_memory_info()
-        model_info = model_loader.get_model_info()
-        
-        status = {
-            "memory": memory_info,
-            "model": model_info,
-            "timestamp": None  # Можно добавить текущее время
+async def memory_status(model_manager: ModelManager = Depends(get_model_manager)):
+    loader = model_manager.get_active_model()
+    if not loader:
+        return JSONResponse(content={"model": None, "memory": {}})
+    return JSONResponse(
+        content={
+            "memory": loader.get_memory_info(),
+            "model": loader.get_model_info(),
         }
-        
-        return JSONResponse(content=status)
-        
-    except Exception as e:
-        logger.error(f"Memory status check failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Memory status check failed: {str(e)}")
+    )
 
 
 @router.get("/")
 async def root():
-    """Корневой endpoint"""
     return {
         "message": "Signature Inference Server",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "endpoints": {
             "health": "/health",
-            "memory": "/memory",
             "forgery_by_id": "/forgery-by-id",
             "forgery_by_data": "/forgery-by-data",
-            "docs": "/docs"
-        }
+            "model": "/model",
+            "docs": "/docs",
+        },
     }

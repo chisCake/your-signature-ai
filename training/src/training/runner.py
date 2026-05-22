@@ -1177,6 +1177,34 @@ class TrainingRunner:
                 self.log(f"Final test evaluation failed: {e}")
                 test_metrics = {"eer": 1.0, "auc": 0.5, "eval_time": 0.0}
 
+            # Export model bundle zip for inference deployment
+            try:
+                self.log("Exporting model bundle...")
+                best_ckpt = os.path.join(checkpoint_dir, "best_by_eer.pt")
+                if os.path.exists(best_ckpt):
+                    ckpt = torch.load(best_ckpt, map_location=device, weights_only=False)
+                    model.load_state_dict(ckpt["model"])
+                    model.eval()
+                    val_eer_export, val_auc_export, val_emb_export, val_labels_export = (
+                        evaluate(model, val_loader, device, self.logger)
+                    )
+                    from training.export_bundle import export_model_bundle
+
+                    bundle_name = run_name or "model"
+                    zip_path = export_model_bundle(
+                        run_dir,
+                        bundle_name,
+                        val_embeddings=val_emb_export,
+                        val_labels=val_labels_export,
+                        val_eer=val_eer_export,
+                        val_auc=val_auc_export,
+                    )
+                    self.log(f"Model bundle exported: {zip_path}")
+                else:
+                    self.log("Skipping bundle export: best_by_eer.pt not found")
+            except Exception as e:
+                self.log(f"Bundle export failed (training still succeeded): {e}")
+
             self.log("=" * 80)
             self.log("Training completed successfully!")
             self.log("=" * 80)

@@ -14,7 +14,9 @@ import numpy as np
 # Классы и функции из utils/
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
-from utils.preprocessing import preprocess_signature_data, resolve_preprocess_version
+from utils.preprocessing import to_numpy_points
+from utils.feature_runtime import build_model_features
+from utils.model_manager import SLOT_CURRENT
 
 # --- Импорт функций-зависимостей из dependencies.py ---
 # Это устраняет циклический импорт, так как роутер импортирует только функции,
@@ -76,15 +78,16 @@ async def analyze_forgery_by_id(
         logger.info(f"Forgery data retrieved, length: {len(forgery_data)}")
 
         # --- Шаг 2: Препроцессинг и подготовка тензоров ---
-        logger.info("Step 2: Preprocessing signature data")
-        model_version = resolve_preprocess_version(model_loader=model_loader)
-        logger.info(f"Using preprocessing version: {model_version}")
+        logger.info("Step 2: Feature pipeline from active bundle")
+        pipeline = model_loader.feature_pipeline
+        threshold = model_loader.verification_threshold
+        bundle_dir = SLOT_CURRENT
 
-        original_features = preprocess_signature_data(
-            original_data, model_version=model_version
+        original_features = build_model_features(
+            to_numpy_points(original_data), pipeline, bundle_dir
         )
-        forgery_features = preprocess_signature_data(
-            forgery_data, model_version=model_version
+        forgery_features = build_model_features(
+            to_numpy_points(forgery_data), pipeline, bundle_dir
         )
         logger.info(f"Preprocessing completed. Original features shape: {original_features.shape}, Forgery features shape: {forgery_features.shape}")
         
@@ -107,7 +110,6 @@ async def analyze_forgery_by_id(
         logger.info("Step 4: Calculating similarity")
         similarity_score = float(F.cosine_similarity(original_embedding, forgery_embedding, dim=1))
 
-        threshold = 0.7 
         is_forgery = similarity_score < threshold
 
         logger.info(f"Analysis completed: similarity={similarity_score:.4f}, is_forgery={is_forgery}")
@@ -130,9 +132,14 @@ async def analyze_forgery_by_id(
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         
+        err_threshold = (
+            model_loader.verification_threshold
+            if model_loader and hasattr(model_loader, "verification_threshold")
+            else 0.0
+        )
         return ForgeryAnalysisResponse(
             is_forgery=False,
             similarity_score=0.0,
-            threshold=0.7,
-            error=f"Analysis failed: {type(e).__name__}: {str(e)}"
+            threshold=err_threshold,
+            error=f"Analysis failed: {type(e).__name__}: {str(e)}",
         )

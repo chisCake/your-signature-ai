@@ -1,69 +1,42 @@
 /**
- * Клиент для управления моделями через API inference сервера
+ * Client for inference model bundle management.
  */
 
 export type SwapStrategy = 'zero_downtime' | 'sequential';
 
-export interface ModelStorageInfo {
-  type: 'local' | 'blob';
-  py_blob_path?: string;
-  pt_blob_path?: string;
-  py_download_url?: string;
-  pt_download_url?: string;
-  py_size?: number;
-  pt_size?: number;
-  synced_at?: number;
-}
-
-export interface ModelStatus {
-  name: string;
-  state: 'loading' | 'ready' | 'active' | 'unloading' | 'error';
-  is_active: boolean;
-  is_ready: boolean;
-  error?: string;
-  created_at: number;
-  last_used: number;
-  model_info?: {
-    path: string;
-    device: string;
-    model_type: string;
-    architecture: string;
-    config?: {
-      in_features: number;
-      conv_channels: number[];
-      gru_hidden: number;
-      gru_layers: number;
-      embedding_dim: number;
-      dropout: number;
-    };
-    total_parameters?: number;
-    trainable_parameters?: number;
-  };
-  model_info_error?: string;
-  storage?: ModelStorageInfo;
+export interface BundleSlotInfo {
+  bundle_name: string | null;
+  loaded?: boolean;
+  ready_for_rollback?: boolean;
 }
 
 export interface ModelManagerStatus {
   active_model: string | null;
-  models: Record<string, ModelStatus>;
-  total_models: number;
-  storage_registry: Record<string, ModelStorageInfo>;
+  current: BundleSlotInfo;
+  previous: BundleSlotInfo;
+  available_bundles: string[];
+  blob_synced_at?: number;
+  loader_info?: Record<string, unknown>;
 }
 
 export interface UploadModelResponse {
   success: boolean;
-  strategy: SwapStrategy;
-  new_model: string;
-  old_model: string | null;
-  message: string;
-  storage?: ModelStorageInfo;
+  activated?: boolean;
+  model_name: string;
+  completed_stages?: string[];
+  failed_stage?: string;
+  message?: string;
+  storage?: Record<string, unknown>;
+  metadata_summary?: Record<string, unknown>;
 }
 
-export interface DeleteModelResponse {
+export interface ActivateModelResponse {
   success: boolean;
-  model_name: string;
-  deleted_files: string[];
-  message: string;
+  model_name?: string;
+  current?: string | null;
+  previous?: string | null;
+  rolled_back?: boolean;
+  message?: string;
 }
 
 class ModelManagementClient {
@@ -74,104 +47,89 @@ class ModelManagementClient {
       process.env.NEXT_PUBLIC_INFERENCE_URL || 'http://localhost:8000';
   }
 
-  /**
-   * Загрузка новой модели
-   */
   async uploadModel(
     modelName: string,
-    ptFile: File,
-    pyFile: File,
-    swapStrategy: SwapStrategy = 'zero_downtime'
+    zipFile: File,
+    options: {
+      activate?: boolean;
+      swapStrategy?: SwapStrategy;
+    } = {}
   ): Promise<UploadModelResponse> {
     const formData = new FormData();
     formData.append('model_name', modelName);
-    formData.append('pt_file', ptFile);
-    formData.append('py_file', pyFile);
-    formData.append('swap_strategy', swapStrategy);
+    formData.append('bundle_file', zipFile);
+    formData.append('activate', String(options.activate ?? false));
+    formData.append('swap_strategy', options.swapStrategy ?? 'zero_downtime');
 
     const response = await fetch(`${this.baseUrl}/model/upload`, {
       method: 'POST',
       body: formData,
     });
 
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        errorData.detail || `HTTP ${response.status}: ${response.statusText}`
+        data.message || data.detail || `HTTP ${response.status}`
       );
     }
-
-    return response.json();
+    return data;
   }
 
-  /**
-   * Получение статуса всех моделей
-   */
   async getModelStatus(): Promise<ModelManagerStatus> {
-    const response = await fetch(`${this.baseUrl}/model/status`, {
-      method: 'GET',
-    });
-
+    const response = await fetch(`${this.baseUrl}/model/status`);
     if (!response.ok) {
-      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.detail || errorMessage;
-      } catch {
-        // Если не удалось распарсить JSON, используем стандартное сообщение
-        if (response.status === 404) {
-          errorMessage = 'Not Found';
-        }
-      }
-
-      throw new Error(errorMessage);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `HTTP ${response.status}`);
     }
-
     return response.json();
   }
 
-  /**
-   * Переключение на существующую модель
-   */
-  async swapModel(
+  async activateModel(
     modelName: string,
     swapStrategy: SwapStrategy = 'zero_downtime'
-  ): Promise<UploadModelResponse> {
+  ): Promise<ActivateModelResponse> {
     const formData = new FormData();
     formData.append('model_name', modelName);
     formData.append('swap_strategy', swapStrategy);
 
-    const response = await fetch(`${this.baseUrl}/model/swap`, {
+    const response = await fetch(`${this.baseUrl}/model/activate`, {
       method: 'POST',
       body: formData,
     });
-
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.detail || `HTTP ${response.status}: ${response.statusText}`
-      );
+      throw new Error(data.detail || data.message || `HTTP ${response.status}`);
     }
-
-    return response.json();
+    return data;
   }
 
-  /**
-   * Удаление модели
-   */
-  async deleteModel(modelName: string): Promise<DeleteModelResponse> {
+  async rollbackModel(): Promise<ActivateModelResponse> {
+    const response = await fetch(`${this.baseUrl}/model/rollback`, {
+      method: 'POST',
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.detail || `HTTP ${response.status}`);
+    }
+    return data;
+  }
+
+  /** @deprecated use activateModel */
+  async swapModel(
+    modelName: string,
+    swapStrategy: SwapStrategy = 'zero_downtime'
+  ): Promise<ActivateModelResponse> {
+    return this.activateModel(modelName, swapStrategy);
+  }
+
+  async deleteModel(modelName: string): Promise<{ success: boolean; deleted: string }> {
     const response = await fetch(`${this.baseUrl}/model/${modelName}`, {
       method: 'DELETE',
     });
-
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        errorData.detail || `HTTP ${response.status}: ${response.statusText}`
-      );
+      throw new Error(errorData.detail || `HTTP ${response.status}`);
     }
-
     return response.json();
   }
 }

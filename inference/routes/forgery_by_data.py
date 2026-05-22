@@ -12,11 +12,9 @@ import torch.nn.functional as F
 from dependencies import get_supabase_client, get_model_loader
 from utils.supabase_client import SupabaseClient
 from utils.model_loader import ModelLoader
-from utils.preprocessing import (
-    preprocess_signature_data,
-    parse_csv_signature_data,
-    resolve_preprocess_version,
-)
+from utils.preprocessing import parse_csv_signature_data, to_numpy_points
+from utils.feature_runtime import build_model_features
+from utils.model_manager import SLOT_CURRENT
 
 
 logger = logging.getLogger(__name__)
@@ -94,15 +92,15 @@ async def analyze_forgery_by_data(
                 detail="Invalid forgery data provided or failed to parse",
             )
 
-        # --- Шаг 3: Препроцессинг и подготовка тензоров ---
-        model_version = resolve_preprocess_version(model_loader=model_loader)
-        logger.info(f"Using preprocessing version: {model_version}")
+        pipeline = model_loader.feature_pipeline
+        threshold = model_loader.verification_threshold
+        bundle_dir = SLOT_CURRENT
 
-        original_features = preprocess_signature_data(
-            original_data, model_version=model_version
+        original_features = build_model_features(
+            to_numpy_points(original_data), pipeline, bundle_dir
         )
-        forgery_features = preprocess_signature_data(
-            forgery_data, model_version=model_version
+        forgery_features = build_model_features(
+            to_numpy_points(forgery_data), pipeline, bundle_dir
         )
 
         # Преобразуем в тензоры PyTorch
@@ -118,10 +116,6 @@ async def analyze_forgery_by_data(
             F.cosine_similarity(original_embedding, forgery_embedding, dim=1)
         )
 
-        # Определяем порог для подделки
-        threshold = 0.75
-
-        # Определяем, является ли это подделкой
         is_forgery = similarity_score < threshold
 
         logger.info(
@@ -148,10 +142,14 @@ async def analyze_forgery_by_data(
 
         logger.error(f"Traceback: {traceback.format_exc()}")
 
-        # Возвращаем структурированный ответ об ошибке
+        err_threshold = (
+            model_loader.verification_threshold
+            if model_loader and hasattr(model_loader, "verification_threshold")
+            else 0.0
+        )
         return ForgeryAnalysisResponse(
             is_forgery=False,
             similarity_score=0.0,
-            threshold=threshold,
+            threshold=err_threshold,
             error=f"Analysis failed: {type(e).__name__}: {str(e)}",
         )

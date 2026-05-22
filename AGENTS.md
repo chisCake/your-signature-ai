@@ -27,7 +27,7 @@ Monorepo root: `package.json` workspaces (`site`, `inference`, `training`). Pyth
 
 - **Deploy branch:** `main` → auto-deploy frontend + Render inference.
 - **No shared staging:** no paid preview DB/inference. **Vercel `dev` branches** act as private frontend previews. Local work: **Supabase CLI (`supabase start`)** + **local inference**.
-- **Active production model:** `temp-quick` (on host/Blob; may be absent locally).
+- **Active production model:** `temp-quick` (bundle zip in Blob; unpacked to `inference/models/current/`).
 
 See **`docs/ROADMAP.md`** for prioritized backlog.
 

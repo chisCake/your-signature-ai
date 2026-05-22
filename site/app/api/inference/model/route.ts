@@ -15,7 +15,41 @@ export async function GET(request: NextRequest) {
 
     const results: Record<string, unknown> = {};
 
-    // Получаем код модели
+    if (type === 'features' || type === 'all') {
+      try {
+        const featuresResponse = await fetch(`${inferenceUrl}/model/features`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(10000),
+        });
+        if (featuresResponse.ok) {
+          results.features = await featuresResponse.text();
+        } else {
+          results.featuresError = `HTTP ${featuresResponse.status}`;
+        }
+      } catch (error) {
+        results.featuresError =
+          error instanceof Error ? error.message : 'Unknown error';
+      }
+    }
+
+    if (type === 'artifacts' || type === 'all') {
+      try {
+        const artResponse = await fetch(`${inferenceUrl}/model/artifacts`, {
+          method: 'GET',
+          signal: AbortSignal.timeout(10000),
+        });
+        if (artResponse.ok) {
+          results.artifacts = await artResponse.json();
+        } else {
+          results.artifactsError = `HTTP ${artResponse.status}`;
+        }
+      } catch (error) {
+        results.artifactsError =
+          error instanceof Error ? error.message : 'Unknown error';
+      }
+    }
+
+    // Получаем код encoder
     if (type === 'code' || type === 'all') {
       try {
         const codeResponse = await fetch(`${inferenceUrl}/model/`, {

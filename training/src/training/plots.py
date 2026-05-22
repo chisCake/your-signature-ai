@@ -47,7 +47,30 @@ def _optimal_threshold(
     # pick threshold closest to EER (where FPR ~= 1-TPR)
     fnr = 1 - tpr
     idx = np.nanargmin(np.abs(fnr - fpr))
-    return thresholds[idx]
+    return float(thresholds[idx])
+
+
+def compute_verification_threshold(
+    embeddings: np.ndarray, labels: np.ndarray
+) -> tuple[float, float, float]:
+    """
+    Optimal cosine-similarity threshold at EER point on val embeddings.
+
+    Returns:
+        (threshold, auc, eer)
+    """
+    sim = embeddings @ embeddings.T
+    n = labels.shape[0]
+    iu = np.triu_indices(n, k=1)
+    scores = sim[iu]
+    same = (labels[:, None] == labels[None, :])[iu].astype(int)
+    fpr, tpr, thr = roc_curve(same, scores)
+    auc = float(roc_auc_score(same, scores))
+    fnr = 1 - tpr
+    eer_idx = int(np.nanargmin(np.abs(fnr - fpr)))
+    eer = float((fpr[eer_idx] + fnr[eer_idx]) / 2)
+    thr_opt = _optimal_threshold(fpr, tpr, thr)
+    return thr_opt, auc, eer
 
 
 def generate_eval_plots(

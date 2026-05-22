@@ -132,27 +132,39 @@ FastAPI автоматически генерирует OpenAPI документ
 
 ### POST /model/upload
 
-Загрузка новой модели.
+Загрузка **model_bundle.zip** в Blob (`models/{name}.zip`).
 
 **Request** (multipart/form-data):
 ```
 model_name: string
-pt_file: File
-py_file: File
-swap_strategy: "zero_downtime" | "sequential"
+bundle_file: File (.zip)
+activate: bool (default false)
+swap_strategy: "zero_downtime" | "sequential"  # только если activate=true
 ```
 
-**Response**:
+**Response** (успех без активации):
 ```json
 {
   "success": true,
-  "strategy": "zero_downtime",
-  "new_model": "v2",
-  "old_model": "v1",
-  "message": "Model v2 activated successfully",
-  "storage": {...}
+  "activated": false,
+  "model_name": "sig-v3",
+  "completed_stages": ["received", "unpack", "manifest", "pytorch_smoke", "blob", "database"],
+  "metadata_summary": { "verification_threshold": 0.734, "in_features": 21 }
 }
 ```
+
+### POST /model/rollback
+
+Мгновенный откат: swap `models/current/` ↔ `models/previous/` без скачивания из Blob.
+
+**Response**:
+```json
+{ "success": true, "rolled_back": true, "model_name": "sig-v2" }
+```
+
+### GET /model/artifacts
+
+Метаданные и список PNG из **активного** bundle (`models/current/`).
 
 ### POST /model/activate
 

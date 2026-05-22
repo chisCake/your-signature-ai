@@ -45,7 +45,7 @@ describe('inference-client formatting utilities', () => {
       expect(formatted.message).toContain('80%');
     });
 
-    it('should handle boundary case at 85%', () => {
+    it('should respect API is_forgery at boundary threshold', () => {
       const resultAt85: ForgeryAnalysisResponse = {
         similarity_score: 0.85,
         is_forgery: false,
@@ -55,8 +55,7 @@ describe('inference-client formatting utilities', () => {
       const formatted = formatForgeryResult(resultAt85);
 
       expect(formatted.similarityPercent).toBe(85);
-      // 85% не больше 85%, поэтому это подделка (isGenuine = 85 > 85 = false)
-      expect(formatted.isForgery).toBe(true);
+      expect(formatted.isForgery).toBe(false);
     });
 
     it('should handle boundary case just below 85%', () => {
@@ -150,7 +149,7 @@ describe('inference-client formatting utilities', () => {
       expect(color).toBe('text-green-600');
     });
 
-    it('should return yellow for similarity between 80% and 85%', () => {
+    it('should return red when is_forgery is true', () => {
       const result: ForgeryAnalysisResponse = {
         similarity_score: 0.82,
         is_forgery: true,
@@ -159,10 +158,10 @@ describe('inference-client formatting utilities', () => {
 
       const color = getForgeryColor(result);
 
-      expect(color).toBe('text-yellow-600');
+      expect(color).toBe('text-red-600');
     });
 
-    it('should return yellow for similarity exactly 81%', () => {
+    it('should return red for forgery at 81% similarity', () => {
       const result: ForgeryAnalysisResponse = {
         similarity_score: 0.81,
         is_forgery: true,
@@ -171,7 +170,7 @@ describe('inference-client formatting utilities', () => {
 
       const color = getForgeryColor(result);
 
-      expect(color).toBe('text-yellow-600');
+      expect(color).toBe('text-red-600');
     });
 
     it('should return red for similarity <= 80%', () => {
@@ -210,7 +209,7 @@ describe('inference-client formatting utilities', () => {
       expect(color).toBe('text-red-600');
     });
 
-    it('should handle boundary at 85% (exclusive)', () => {
+    it('should return green when not forgery at threshold', () => {
       const resultAt85: ForgeryAnalysisResponse = {
         similarity_score: 0.85,
         is_forgery: false,
@@ -219,7 +218,7 @@ describe('inference-client formatting utilities', () => {
 
       const color = getForgeryColor(resultAt85);
 
-      expect(color).toBe('text-yellow-600');
+      expect(color).toBe('text-green-600');
     });
   });
 
