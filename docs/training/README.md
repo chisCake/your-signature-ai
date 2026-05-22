@@ -52,16 +52,17 @@ PROJECT = '/content/drive/MyDrive/your-signature-ai/training'
 Или через Secrets:
 
 1. Перейдите в Secrets (🔑) в боковой панели
-2. Добавьте секрет `PROJECT` с путем к папке проекта
+2. Добавьте секрет `YSAI_PROJECT` с путем к папке проекта
 
 ### 3. Переменные окружения
 
 Настройте секреты в Colab:
 
-- `SUPABASE_URL` - URL вашего Supabase проекта
-- `SUPABASE_PUBLISHABLE_KEY` - Публичный ключ Supabase
-- `EMAIL` - Email для входа
-- `PASSWORD` - Пароль для входа
+- `YSAI_SUPABASE_URL` - URL вашего Supabase проекта
+- `YSAI_SUPABASE_PUBLISHABLE_KEY` - Публичный ключ Supabase
+- `YSAI_EMAIL` - Email для входа
+- `YSAI_PASSWORD` - Пароль для входа
+- `YSAI_DATASET_PATH` (опционально) - путь к датасету без расширения `.lmdb` / `.json`
 
 ### 4. Установка зависимостей
 

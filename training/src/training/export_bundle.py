@@ -118,6 +118,61 @@ def build_manifest(
     }
 
 
+def is_exportable_run(run_dir: Path) -> bool:
+    """Run directory has minimum artifacts for bundle export."""
+    return (run_dir / "checkpoints" / "best_by_eer.pt").exists() and (
+        run_dir / "model.py"
+    ).exists()
+
+
+def resolve_latest_run_dir(output_dir: str) -> Optional[Path]:
+    """
+    Pick the most recently modified run under *output_dir* that can be exported.
+    """
+    base = Path(output_dir)
+    if not base.is_dir():
+        return None
+
+    candidates: List[Path] = []
+    for child in base.iterdir():
+        if child.is_dir() and is_exportable_run(child):
+            candidates.append(child)
+
+    if not candidates:
+        return None
+    return max(candidates, key=lambda p: p.stat().st_mtime)
+
+
+def export_bundle_from_run(
+    run_dir: str,
+    bundle_name: Optional[str] = None,
+    *,
+    checkpoint_path: str = "checkpoints/best_by_eer.pt",
+    val_embeddings: Optional[np.ndarray] = None,
+    val_labels: Optional[np.ndarray] = None,
+    val_eer: Optional[float] = None,
+    val_auc: Optional[float] = None,
+) -> Path:
+    """
+    Export zip from an existing run folder (notebook / manual recovery).
+    """
+    run_path = Path(run_dir)
+    if not is_exportable_run(run_path):
+        raise FileNotFoundError(
+            f"Run not exportable (need checkpoints/best_by_eer.pt and model.py): {run_path}"
+        )
+    name = bundle_name or run_path.name
+    return export_model_bundle(
+        str(run_path),
+        name,
+        checkpoint_path=checkpoint_path,
+        val_embeddings=val_embeddings,
+        val_labels=val_labels,
+        val_eer=val_eer,
+        val_auc=val_auc,
+    )
+
+
 def export_model_bundle(
     run_dir: str,
     bundle_name: str,

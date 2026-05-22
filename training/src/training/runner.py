@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict
-from typing import Optional, Tuple, Callable
+from typing import Any, Optional, Tuple, Callable
 import os
 import random
 import numpy as np
@@ -624,6 +624,57 @@ class TrainingRunner:
         wrapper.collate_fn = wrapper.collate_fn
         return wrapper
 
+    def _try_export_bundle(
+        self,
+        run_dir: str,
+        run_name: str,
+        checkpoint_dir: str,
+        *,
+        device: Optional[torch.device] = None,
+        model: Optional[SignatureEncoder] = None,
+        val_loader: Optional[Any] = None,
+    ) -> bool:
+        """
+        Build {bundle_name}.zip when best_by_eer.pt exists.
+        Uses val evaluate for thr_opt when model+val_loader are available;
+        otherwise threshold comes from epoch_metrics.csv.
+        """
+        best_ckpt = os.path.join(checkpoint_dir, "best_by_eer.pt")
+        if not os.path.exists(best_ckpt):
+            self.log("Bundle export skipped: best_by_eer.pt not found")
+            return False
+
+        try:
+            val_emb_export = None
+            val_labels_export = None
+            val_eer_export = None
+            val_auc_export = None
+
+            if model is not None and val_loader is not None and device is not None:
+                ckpt = torch.load(best_ckpt, map_location=device, weights_only=False)
+                model.load_state_dict(ckpt["model"])
+                model.eval()
+                val_eer_export, val_auc_export, val_emb_export, val_labels_export = (
+                    evaluate(model, val_loader, device, self.logger)
+                )
+
+            from training.export_bundle import export_model_bundle
+
+            bundle_name = run_name or os.path.basename(run_dir)
+            zip_path = export_model_bundle(
+                run_dir,
+                bundle_name,
+                val_embeddings=val_emb_export,
+                val_labels=val_labels_export,
+                val_eer=val_eer_export,
+                val_auc=val_auc_export,
+            )
+            self.log(f"Model bundle exported: {zip_path}")
+            return True
+        except Exception as e:
+            self.log(f"Bundle export failed: {e}")
+            return False
+
     def run(self) -> None:
         """Main training run method."""
         print("Starting training run...")
@@ -696,6 +747,10 @@ class TrainingRunner:
                 self.log(f"Warning: Could not find model file at {model_file_path}")
         except Exception as e:
             self.log(f"Warning: Failed to save model file: {e}")
+
+        bundle_exported = False
+        model: Optional[SignatureEncoder] = None
+        val_loader = None
 
         try:
             # Calculate input features: base features (x,y,p,t_norm) + derived features
@@ -1177,33 +1232,15 @@ class TrainingRunner:
                 self.log(f"Final test evaluation failed: {e}")
                 test_metrics = {"eer": 1.0, "auc": 0.5, "eval_time": 0.0}
 
-            # Export model bundle zip for inference deployment
-            try:
-                self.log("Exporting model bundle...")
-                best_ckpt = os.path.join(checkpoint_dir, "best_by_eer.pt")
-                if os.path.exists(best_ckpt):
-                    ckpt = torch.load(best_ckpt, map_location=device, weights_only=False)
-                    model.load_state_dict(ckpt["model"])
-                    model.eval()
-                    val_eer_export, val_auc_export, val_emb_export, val_labels_export = (
-                        evaluate(model, val_loader, device, self.logger)
-                    )
-                    from training.export_bundle import export_model_bundle
-
-                    bundle_name = run_name or "model"
-                    zip_path = export_model_bundle(
-                        run_dir,
-                        bundle_name,
-                        val_embeddings=val_emb_export,
-                        val_labels=val_labels_export,
-                        val_eer=val_eer_export,
-                        val_auc=val_auc_export,
-                    )
-                    self.log(f"Model bundle exported: {zip_path}")
-                else:
-                    self.log("Skipping bundle export: best_by_eer.pt not found")
-            except Exception as e:
-                self.log(f"Bundle export failed (training still succeeded): {e}")
+            self.log("Exporting model bundle...")
+            bundle_exported = self._try_export_bundle(
+                run_dir,
+                run_name,
+                checkpoint_dir,
+                device=device,
+                model=model,
+                val_loader=val_loader,
+            )
 
             self.log("=" * 80)
             self.log("Training completed successfully!")
@@ -1212,3 +1249,16 @@ class TrainingRunner:
         except Exception as e:
             self.log(f"Training failed: {e}")
             raise e
+        finally:
+            if not bundle_exported:
+                self.log(
+                    "Attempting fallback bundle export (e.g. after crash with saved best checkpoint)..."
+                )
+                self._try_export_bundle(
+                    run_dir,
+                    run_name,
+                    checkpoint_dir,
+                    device=device,
+                    model=model,
+                    val_loader=val_loader,
+                )
