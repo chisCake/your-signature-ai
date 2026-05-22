@@ -73,6 +73,7 @@ Thumbs.db
 # ===========================================
 /data/
 /runs/
+/backups/
 *.csv
 *.tsv
 *.jsonl

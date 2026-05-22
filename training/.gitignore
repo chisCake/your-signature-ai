@@ -9,7 +9,8 @@ runs/
 *.pt
 *.pth
 
-# Jupyter
+# Jupyter — working notebook (Colab outputs); tracked copy is main.example.ipynb
+main.ipynb
 .ipynb_checkpoints
 
 # ML frameworks

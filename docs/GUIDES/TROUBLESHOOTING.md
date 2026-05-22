@@ -184,5 +184,6 @@
 
 - [Установка](SETUP.md)
 - [Развертывание](DEPLOYMENT.md)
-- [Руководство для разработчиков](CONTRIBUTING.md)
+- [AGENTS.md](../../AGENTS.md)
+- [Roadmap](../ROADMAP.md)
 

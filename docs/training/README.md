@@ -8,7 +8,8 @@ Training проект Your Sign AI предназначен для обучен�
 
 ```
 training/
-├── main.ipynb              # Основной notebook для обучения
+├── main.ipynb              # Рабочий notebook (gitignored, Colab)
+├── main.example.ipynb      # В репозитории: без outputs; npm run notebook:sync
 ├── requirements.txt        # Зависимости Python
 └── src/                    # Исходный код
     ├── config.py          # Конфигурация обучения

@@ -115,10 +115,11 @@ supabase db reset
 
 ### 5. Training (Google Colab)
 
-1. Откройте `training/main.ipynb` в Google Colab
+1. Откройте `training/main.example.ipynb` из репозитория в Google Colab (Save a copy → работайте как `main.ipynb` локально / на Drive)
 2. Подключите Google Drive
 3. Настройте переменные окружения через Secrets
 4. Запустите ячейки по порядку
+5. После изменения ячеек: `npm run notebook:sync` из корня репозитория, затем коммит `main.example.ipynb`
 
 ## Настройка Supabase
 
@@ -202,6 +203,7 @@ supabase start
 ## Дополнительные ресурсы
 
 - [Развертывание](DEPLOYMENT.md)
-- [Руководство для разработчиков](CONTRIBUTING.md)
+- [AGENTS.md](../../AGENTS.md) — контекст для разработчиков и ИИ-агентов
+- [Roadmap](../ROADMAP.md)
 - [Решение проблем](TROUBLESHOOTING.md)
 
