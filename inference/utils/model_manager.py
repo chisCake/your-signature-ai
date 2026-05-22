@@ -126,6 +126,10 @@ class ModelManager:
         self._load_current_into_ram()
 
     def _resolve_zip_path(self, bundle_name: str) -> Optional[Path]:
+        cache_zip = SLOT_CACHE / f"{bundle_name}.zip"
+        if cache_zip.exists():
+            return cache_zip
+
         entry = self.blob_registry.get(bundle_name)
         if entry and entry.get("local"):
             local = Path(entry["pathname"])
@@ -150,6 +154,117 @@ class ModelManager:
             shutil.rmtree(slot)
         slot.mkdir(parents=True, exist_ok=True)
         unpack_zip_file(zip_path, slot)
+
+    def _install_bundle_dir_to_slot(self, bundle_dir: Path, slot: Path) -> None:
+        """Copy already-validated unpacked bundle tree into a slot directory."""
+        if slot.exists():
+            shutil.rmtree(slot)
+        shutil.copytree(bundle_dir, slot, dirs_exist_ok=True)
+
+    def _persist_bundle_zip(self, model_name: str, zip_bytes: bytes) -> Dict[str, Any]:
+        """Write zip to local cache (and Blob); no download needed for immediate activate."""
+        cache_zip = SLOT_CACHE / f"{model_name}.zip"
+        cache_zip.write_bytes(zip_bytes)
+
+        storage: Dict[str, Any] = {
+            "type": "local",
+            "bundle_path": str(cache_zip),
+        }
+
+        if self.blob_client:
+            pathname = f"models/{model_name}.zip"
+            result = self.blob_client.upload_bytes(
+                pathname, zip_bytes, content_type="application/zip"
+            )
+            storage = {
+                "type": "blob",
+                "bundle_blob_path": result.get("pathname", pathname),
+                "download_url": result.get("downloadUrl") or result.get("url"),
+                "local_cache_path": str(cache_zip),
+            }
+        else:
+            local_zip = self.models_dir / f"{model_name}.zip"
+            local_zip.write_bytes(zip_bytes)
+            storage["bundle_path"] = str(local_zip)
+
+        self.blob_registry[model_name] = {
+            "type": storage.get("type", "local"),
+            "pathname": storage.get("bundle_blob_path", str(cache_zip)),
+            "local": True,
+            "download_url": storage.get("download_url"),
+            "synced_at": time.time(),
+        }
+        if model_name not in self.available_bundles:
+            self.available_bundles = sorted(
+                set(self.available_bundles) | {model_name}
+            )
+
+        return storage
+
+    def _activate_from_bundle_dir(
+        self,
+        bundle_dir: Path,
+        model_name: str,
+        swap_strategy: SwapStrategy,
+    ) -> None:
+        """Install unpacked bundle into current/ and load RAM. Caller must hold self.lock."""
+        if model_name == self.current_bundle_name and self.active_loader:
+            return
+
+        if (
+            model_name == self.previous_bundle_name
+            and (SLOT_PREVIOUS / "manifest.json").exists()
+        ):
+            self._rollback_unlocked()
+            return
+
+        if swap_strategy == SwapStrategy.SEQUENTIAL and self.active_loader:
+            self.active_loader.unload_model()
+            self.active_loader = None
+
+        self._rotate_slots_for_new_current(model_name)
+        self._install_bundle_dir_to_slot(bundle_dir, SLOT_CURRENT)
+        self._load_current_into_ram()
+
+    def _rollback_unlocked(self) -> Dict[str, Any]:
+        """Rollback implementation; caller must hold self.lock."""
+        if not (SLOT_PREVIOUS / "manifest.json").exists():
+            raise RuntimeError("No previous bundle available for rollback")
+
+        tmp = self.models_dir / "_swap_tmp"
+        if tmp.exists():
+            shutil.rmtree(tmp)
+
+        shutil.move(str(SLOT_CURRENT), str(tmp))
+        shutil.move(str(SLOT_PREVIOUS), str(SLOT_CURRENT))
+        shutil.move(str(tmp), str(SLOT_PREVIOUS))
+
+        self.current_bundle_name, self.previous_bundle_name = (
+            self.previous_bundle_name,
+            self.current_bundle_name,
+        )
+
+        self._load_current_into_ram()
+
+        if self.current_bundle_name:
+            manifest = validate_bundle_dir(SLOT_CURRENT)
+            upsert_model_record(
+                self.supabase_client,
+                bundle_name=self.current_bundle_name,
+                file_hash=manifest.get("bundle_sha256", ""),
+                metadata={
+                    "bundle_name": self.current_bundle_name,
+                    "verification_threshold": manifest["verification"]["threshold"],
+                },
+                is_active=True,
+            )
+
+        return {
+            "success": True,
+            "model_name": self.current_bundle_name,
+            "previous": self.previous_bundle_name,
+            "rolled_back": True,
+        }
 
     def _rotate_slots_for_new_current(self, new_name: str) -> None:
         if SLOT_PREVIOUS.exists():
@@ -200,37 +315,30 @@ class ModelManager:
                 completed.append("manifest")
                 if manifest.get("bundle_name") and manifest["bundle_name"] != model_name:
                     logger.warning(
-                        "manifest bundle_name=%s differs from model_name=%s",
+                        "manifest bundle_name=%s differs from registry name=%s "
+                        "(Blob key uses registry name)",
                         manifest["bundle_name"],
                         model_name,
                     )
                 pytorch_smoke_test(staging, manifest)
                 completed.append("pytorch_smoke")
 
-            file_hash = sha256_bytes(zip_bytes)
-            storage: Dict[str, Any] = {"type": "local"}
+                if activate:
+                    with self.lock:
+                        self._activate_from_bundle_dir(
+                            staging, model_name, swap_strategy
+                        )
+                    completed.append("activate")
 
-            if self.blob_client:
-                pathname = f"models/{model_name}.zip"
-                result = self.blob_client.upload_bytes(
-                    pathname, zip_bytes, content_type="application/zip"
-                )
-                storage = {
-                    "type": "blob",
-                    "bundle_blob_path": result.get("pathname", pathname),
-                    "download_url": result.get("downloadUrl") or result.get("url"),
-                }
-                completed.append("blob")
-            else:
-                local_zip = self.models_dir / f"{model_name}.zip"
-                local_zip.write_bytes(zip_bytes)
-                storage["bundle_path"] = str(local_zip)
-                completed.append("blob")
+            file_hash = sha256_bytes(zip_bytes)
+            storage = self._persist_bundle_zip(model_name, zip_bytes)
+            completed.append("blob")
 
             self.refresh_blob_registry()
 
             metadata_summary = {
                 "bundle_name": model_name,
+                "manifest_bundle_name": manifest.get("bundle_name"),
                 "verification_threshold": manifest["verification"]["threshold"],
                 "in_features": manifest["in_features"],
                 "feature_pipeline": manifest["feature_pipeline"],
@@ -243,25 +351,20 @@ class ModelManager:
                 bundle_name=model_name,
                 file_hash=file_hash,
                 metadata=metadata_summary,
-                is_active=False,
+                is_active=activate,
             )
             completed.append("database")
 
-            activated = False
-            if activate:
-                self.activate_model(model_name, swap_strategy=swap_strategy)
-                activated = True
-                completed.append("activate")
-
             return {
                 "success": True,
-                "activated": activated,
+                "activated": activate,
                 "model_name": model_name,
                 "completed_stages": completed,
                 "storage": storage,
                 "metadata_summary": metadata_summary,
             }
         except Exception as e:
+            logger.exception("upload_bundle_zip failed at stage %s", completed)
             return {
                 "success": False,
                 "activated": False,
@@ -274,28 +377,41 @@ class ModelManager:
     def activate_model(
         self, model_name: str, swap_strategy: SwapStrategy = SwapStrategy.ZERO_DOWNTIME
     ) -> Dict[str, Any]:
-        del swap_strategy  # slot rotation is always sequential on disk
-
         with self.lock:
             if model_name == self.current_bundle_name and self.active_loader:
-                return {"success": True, "message": "Already active", "model_name": model_name}
+                return {
+                    "success": True,
+                    "message": "Already active",
+                    "model_name": model_name,
+                }
 
             if (
                 model_name == self.previous_bundle_name
                 and (SLOT_PREVIOUS / "manifest.json").exists()
             ):
-                return self.rollback()
+                return self._rollback_unlocked()
 
-            zip_path = self._resolve_zip_path(model_name)
-            if zip_path is None:
-                raise FileNotFoundError(f"Bundle zip not found: {model_name}")
-
-            self._rotate_slots_for_new_current(model_name)
-            self._unpack_zip_to_slot(zip_path, SLOT_CURRENT)
+            cache_zip = SLOT_CACHE / f"{model_name}.zip"
+            local_zip = self.models_dir / f"{model_name}.zip"
+            zip_path: Optional[Path] = None
+            if cache_zip.exists():
+                zip_path = cache_zip
+                logger.info("Activate from local cache %s", cache_zip)
+            elif local_zip.exists():
+                zip_path = local_zip
+                logger.info("Activate from local zip %s", local_zip)
+            else:
+                zip_path = self._resolve_zip_path(model_name)
+                if zip_path is None:
+                    raise FileNotFoundError(f"Bundle zip not found: {model_name}")
+                logger.info("Activate from resolved path %s", zip_path)
 
             if swap_strategy == SwapStrategy.SEQUENTIAL and self.active_loader:
                 self.active_loader.unload_model()
+                self.active_loader = None
 
+            self._rotate_slots_for_new_current(model_name)
+            self._unpack_zip_to_slot(zip_path, SLOT_CURRENT)
             self._load_current_into_ram()
 
             manifest = validate_bundle_dir(SLOT_CURRENT)
@@ -320,43 +436,7 @@ class ModelManager:
 
     def rollback(self) -> Dict[str, Any]:
         with self.lock:
-            if not (SLOT_PREVIOUS / "manifest.json").exists():
-                raise RuntimeError("No previous bundle available for rollback")
-
-            tmp = self.models_dir / "_swap_tmp"
-            if tmp.exists():
-                shutil.rmtree(tmp)
-
-            shutil.move(str(SLOT_CURRENT), str(tmp))
-            shutil.move(str(SLOT_PREVIOUS), str(SLOT_CURRENT))
-            shutil.move(str(tmp), str(SLOT_PREVIOUS))
-
-            self.current_bundle_name, self.previous_bundle_name = (
-                self.previous_bundle_name,
-                self.current_bundle_name,
-            )
-
-            self._load_current_into_ram()
-
-            if self.current_bundle_name:
-                manifest = validate_bundle_dir(SLOT_CURRENT)
-                upsert_model_record(
-                    self.supabase_client,
-                    bundle_name=self.current_bundle_name,
-                    file_hash=manifest.get("bundle_sha256", ""),
-                    metadata={
-                        "bundle_name": self.current_bundle_name,
-                        "verification_threshold": manifest["verification"]["threshold"],
-                    },
-                    is_active=True,
-                )
-
-            return {
-                "success": True,
-                "model_name": self.current_bundle_name,
-                "previous": self.previous_bundle_name,
-                "rolled_back": True,
-            }
+            return self._rollback_unlocked()
 
     def get_model_info(self) -> Dict[str, Any]:
         with self.lock:

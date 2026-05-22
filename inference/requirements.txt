@@ -6,12 +6,12 @@ uvicorn>=0.24.0  # Без [standard] для уменьшения размера 
 python-multipart>=0.0.6
 
 # === ML & DL ===
-# CPU-only версия PyTorch (последняя стабильная, Python 3.13+)
-# torchvision удален - не используется в коде
-# Используем --extra-index-url чтобы не переопределять основной PyPI индекс
+# CPU-only PyTorch (wheel index: https://download.pytorch.org/whl/cpu).
+# 2.7.x снят с индекса; для Python 3.12–3.14 доступны 2.9+ (локально проверено на 3.14).
+# torchvision не используется в inference.
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.7.1+cpu
-numpy>=1.26  # PyTorch 2.6+ поддерживает numpy 2.x
+torch==2.12.0+cpu
+numpy>=1.26,<3  # PyTorch 2.x совместим с numpy 2.x
 pillow>=10.0
 
 # === DATABASE ===
