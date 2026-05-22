@@ -126,8 +126,10 @@ TODO.md
 # ===========================================
 # Markdown Files (except README.md and docs/)
 # ===========================================
-# Ignore all markdown files except README.md and docs/
+# Ignore all markdown files except README.md, AGENTS.md and docs/
 *.md
 !README.md
+!AGENTS.md
 !**/README.md
+!**/AGENTS.md
 !docs/**/*.md
