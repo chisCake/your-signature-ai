@@ -26,7 +26,7 @@ Monorepo root: `package.json` workspaces (`site`, `inference`, `training`). Pyth
 | Supabase | https://fobqfdljlrglvvhbfsnz.supabase.co | Free tier; project was recreated after ~90d pause—URL may change again |
 
 - **Deploy branch:** `main` → auto-deploy frontend + Render inference.
-- **No shared staging:** no paid preview DB/inference. **Vercel `dev` branches** act as private frontend previews. Local work: **Supabase CLI (`supabase start`)** + **local inference**.
+- **No shared staging:** no paid preview DB/inference. **Vercel `dev` branches** act as private frontend previews. Render `FRONTEND_URL`: production origin + glob (`https://your-signature-ai-*.vercel.app`). Local work: **Supabase CLI (`supabase start`)** + **local inference**.
 - **Active production model:** `temp-quick` (bundle zip in Blob; unpacked to `inference/models/current/`).
 
 See **`docs/ROADMAP.md`** for prioritized backlog.

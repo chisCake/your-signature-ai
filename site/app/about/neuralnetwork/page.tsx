@@ -23,7 +23,8 @@ interface ModelCodeResponse {
     model_type?: string;
     feature_pipeline?: string[];
     verification_threshold?: number;
-    manifest?: { training_summary?: Record<string, number | string> };
+    anomaly_threshold?: number | null;
+    manifest?: Record<string, unknown>;
     architecture?: string;
     model_config?: Record<string, unknown>;
     total_parameters?: number;
@@ -177,9 +178,9 @@ export default function NeuralNetworkPage() {
               <div className='space-y-2 text-sm'>
                 <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                   <div>
-                    <span className='text-muted-foreground'>Модуль:</span>{' '}
+                    <span className='text-muted-foreground'>Bundle:</span>{' '}
                     <code className='text-foreground'>
-                      {data.info.module || 'N/A'}
+                      {data.info.bundle_name || 'N/A'}
                     </code>
                   </div>
                   <div>
@@ -239,13 +240,11 @@ export default function NeuralNetworkPage() {
                     </pre>
                   </div>
                 )}
-                {data.info.config && (
+                {data.info.manifest && (
                   <div className='mt-4'>
-                    <span className='text-muted-foreground'>
-                      Конфигурация системы:
-                    </span>
+                    <span className='text-muted-foreground'>Manifest:</span>
                     <pre className='mt-2 p-3 bg-background rounded border border-border overflow-x-auto text-xs'>
-                      {JSON.stringify(data.info.config, null, 2)}
+                      {JSON.stringify(data.info.manifest, null, 2)}
                     </pre>
                   </div>
                 )}

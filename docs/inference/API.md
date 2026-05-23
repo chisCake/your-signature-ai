@@ -356,7 +356,12 @@ console.log(`Is forgery: ${result.is_forgery}`);
 
 ## CORS
 
-CORS настроен для разрешенных доменов из переменной окружения `FRONTEND_URL`. Для production добавьте все необходимые домены через запятую.
+CORS настроен из `FRONTEND_URL` (значения через запятую):
+
+- **Точный origin** — `https://your-signature-ai.vercel.app`
+- **Glob с `*`** — preview Vercel, например `https://your-signature-ai-*.vercel.app` (звёздочка = любая подстрока в origin)
+
+Локально всегда разрешены `localhost:3000` / `127.0.0.1:3000`.
 
 ## Дополнительные ресурсы
 

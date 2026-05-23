@@ -73,7 +73,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 MODEL_NAME=v1
 ENVIRONMENT=production
 BLOB_READ_WRITE_TOKEN=your_blob_token
-FRONTEND_URL=https://your-frontend.vercel.app
+FRONTEND_URL=https://your-signature-ai.vercel.app,https://your-signature-ai-*.vercel.app
 PORT=10000
 ```
 
@@ -105,8 +105,10 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 MODEL_NAME=v1
 ENVIRONMENT=production
 BLOB_READ_WRITE_TOKEN=your_blob_token
-FRONTEND_URL=https://your-frontend.vercel.app
+FRONTEND_URL=https://your-signature-ai.vercel.app,https://your-signature-ai-*.vercel.app
 ```
+
+Preview-деплои Vercel: в `FRONTEND_URL` добавьте glob-паттерн с `*` (см. `inference/utils/cors_origins.py`).
 
 #### Развертывание
 

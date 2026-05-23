@@ -18,7 +18,7 @@ Prioritized work items for Your Sign AI. This file is the living backlog; update
 
 ## P2 — Deployment and CORS
 
-- [ ] **Vercel preview origins** in inference `FRONTEND_URL` (dev branches as private preview; no separate staging DB/inference)
+- [x] **Vercel preview origins** in inference `FRONTEND_URL` (glob `*` → CORS regex; dev branches as private preview; no separate staging DB/inference)
 - [x] Document Supabase project URL churn risk (free tier pause ~90 days) in **AGENTS.md** / deployment notes
 
 ## P3 — Housekeeping (demo → maintainable)

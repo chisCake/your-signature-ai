@@ -18,7 +18,7 @@ PORT=8000
 # CORS настройки
 # Для продакшена укажите ваш домен Vercel/фронтенда
 # Можно указать несколько доменов через запятую
-FRONTEND_URL=https://your-frontend-domain.vercel.app,https://your-custom-domain.com
+FRONTEND_URL=https://your-signature-ai.vercel.app,https://your-signature-ai-*.vercel.app
 
 # Логирование
 LOG_LEVEL=INFO

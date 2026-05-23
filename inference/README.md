@@ -30,7 +30,7 @@ MODEL_PATH=models/v1.pt
 HOST=0.0.0.0
 PORT=8000
 LOG_LEVEL=INFO
-FRONTEND_URL=http://localhost:3000,https://yourdomain.com
+FRONTEND_URL=http://localhost:3000,https://your-signature-ai.vercel.app,https://your-signature-ai-*.vercel.app
 ```
 
 ## Запуск
@@ -163,7 +163,7 @@ inference/
 | `HOST` | Хост для запуска сервера | Нет (по умолчанию: 0.0.0.0) |
 | `PORT` | Порт для запуска сервера | Нет (по умолчанию: 8000) |
 | `LOG_LEVEL` | Уровень логирования | Нет (по умолчанию: INFO) |
-| `FRONTEND_URL` | URL фронтенда для CORS (можно несколько через запятую) | Нет (по умолчанию: http://localhost:3000) |
+| `FRONTEND_URL` | CORS: точные origin и glob с `*` (Vercel preview), через запятую | Нет (по умолчанию: http://localhost:3000) |
 
 ## Логирование
 

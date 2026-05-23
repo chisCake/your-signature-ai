@@ -24,6 +24,7 @@ from routes.forgery_by_id import router as forgery_by_id_router
 from routes.forgery_by_data import router as forgery_by_data_router
 from routes.model import router as model_router
 from routes.model_upload import router as model_upload_router
+from utils.cors_origins import build_cors_config
 
 # Настройка логирования
 logging.basicConfig(
@@ -193,30 +194,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Настройка CORS
-frontend_urls = os.getenv("FRONTEND_URL", "http://localhost:3000").split(",")
-# Убираем пробелы и пустые строки
-frontend_urls = [url.strip() for url in frontend_urls if url.strip()]
+# Настройка CORS (FRONTEND_URL: точные origin и glob-паттерны с *)
+cors_config = build_cors_config()
+logger.info(f"CORS allowed origins: {cors_config.allow_origins}")
+if cors_config.allow_origin_regex:
+    logger.info(f"CORS allowed origin regex: {cors_config.allow_origin_regex}")
 
-# Добавляем дополнительные домены для разработки и продакшена
-additional_origins = [
-    "http://localhost:3000",  # Next.js dev server
-    "http://127.0.0.1:3000",  # Alternative localhost
-    "https://localhost:3000",  # HTTPS localhost
-]
+_cors_kwargs: Dict[str, Any] = {
+    "allow_origins": cors_config.allow_origins,
+    "allow_credentials": True,
+    "allow_methods": ["GET", "POST", "DELETE", "OPTIONS"],
+    "allow_headers": ["*"],
+}
+if cors_config.allow_origin_regex:
+    _cors_kwargs["allow_origin_regex"] = cors_config.allow_origin_regex
 
-# Объединяем все разрешенные домены
-all_origins = list(set(frontend_urls + additional_origins))
-
-logger.info(f"CORS allowed origins: {all_origins}")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=all_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 # Подключение роутеров
 app.include_router(health_router)
