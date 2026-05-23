@@ -11,6 +11,7 @@ import zipfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
+import numpy as np
 import torch
 
 logger = logging.getLogger(__name__)
@@ -71,13 +72,24 @@ def validate_manifest(manifest: Dict[str, Any]) -> None:
         )
     if "verification" not in manifest or "threshold" not in manifest["verification"]:
         raise ValueError("manifest.verification.threshold is required")
+    anomaly = manifest.get("anomaly")
+    if anomaly and anomaly.get("enabled"):
+        if "threshold" not in anomaly:
+            raise ValueError("manifest.anomaly.threshold is required when enabled")
+        params = anomaly.get("files", {}).get("params", "anomaly_params.npz")
+        if not isinstance(params, str):
+            raise ValueError("manifest.anomaly.files.params must be a string")
 
 
 def validate_bundle_dir(bundle_dir: Path) -> Dict[str, Any]:
-    for name in REQUIRED_FILES:
+    manifest = load_manifest(bundle_dir)
+    required = list(REQUIRED_FILES)
+    if manifest.get("anomaly", {}).get("enabled"):
+        params = manifest["anomaly"].get("files", {}).get("params", "anomaly_params.npz")
+        required = [*required, params]
+    for name in required:
         if not (bundle_dir / name).exists():
             raise FileNotFoundError(f"Missing required bundle file: {name}")
-    manifest = load_manifest(bundle_dir)
     validate_manifest(manifest)
     return manifest
 
@@ -118,4 +130,22 @@ def pytorch_smoke_test(bundle_dir: Path, manifest: Dict[str, Any]) -> None:
     if isinstance(state, dict) and "model" in state:
         state = state["model"]
     model.load_state_dict(state, strict=True)
+    model.eval()
+    with torch.no_grad():
+        in_feat = manifest["in_features"]
+        dummy = torch.randn(1, 8, in_feat)
+        emb = model(dummy)
+        if torch.isnan(emb).any() or torch.isinf(emb).any():
+            raise RuntimeError("Encoder smoke test produced invalid embeddings")
+
+    anomaly_cfg = manifest.get("anomaly") or {}
+    if anomaly_cfg.get("enabled"):
+        from utils.anomaly_detector import AnomalyDetector
+
+        params_name = anomaly_cfg.get("files", {}).get("params", "anomaly_params.npz")
+        det = AnomalyDetector.from_npz(bundle_dir / params_name, anomaly_cfg)
+        score = det.score(emb.cpu().numpy().reshape(-1))
+        if not np.isfinite(score):
+            raise RuntimeError("Anomaly smoke test produced non-finite score")
+
     del model, checkpoint, module

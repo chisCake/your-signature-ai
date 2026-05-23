@@ -32,6 +32,7 @@ export function ComparisonResultModal({
   const [formattedResult, setFormattedResult] = useState<{
     similarityPercent: number;
     isForgery: boolean;
+    isNotSignature?: boolean;
     threshold: number;
     similarityScore: number;
     message: string;
@@ -55,6 +56,9 @@ export function ComparisonResultModal({
     }
 
     if (formattedResult) {
+      if (formattedResult.isNotSignature) {
+        return <AlertCircle className='h-6 w-6 text-amber-600' />;
+      }
       return formattedResult.isForgery ? (
         <XCircle className='h-6 w-6 text-red-600' />
       ) : (
@@ -75,6 +79,13 @@ export function ComparisonResultModal({
     }
 
     if (formattedResult) {
+      if (formattedResult.isNotSignature) {
+        return (
+          <Badge variant='outline' className='border-amber-600 text-amber-700'>
+            Не подпись
+          </Badge>
+        );
+      }
       return formattedResult.isForgery ? (
         <Badge variant='destructive'>Поддельная</Badge>
       ) : (

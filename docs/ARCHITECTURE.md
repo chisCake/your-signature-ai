@@ -172,8 +172,13 @@ sequenceDiagram
     InferenceAPI->>InferenceAPI: Предобработка данных
     InferenceAPI->>Model: Генерация эмбеддингов
     Model-->>InferenceAPI: Эмбеддинги (векторы)
-    InferenceAPI->>InferenceAPI: Расчет cosine similarity
-    InferenceAPI-->>Frontend: { similarity_score, is_forgery }
+    InferenceAPI->>InferenceAPI: Mahalanobis на кандидате (если в bundle)
+    alt не подпись
+        InferenceAPI-->>Frontend: is_not_signature, rejection_reason
+    else подпись
+        InferenceAPI->>InferenceAPI: cosine similarity vs manifest.threshold
+        InferenceAPI-->>Frontend: similarity_score, is_forgery
+    end
     Frontend-->>User: Результат верификации
 ```
 
@@ -202,7 +207,8 @@ sequenceDiagram
         Training->>Model: Обновление весов
     end
     Training->>Training: Сохранение checkpoint
-    Training-->>Admin: Модель обучена
+    Training->>Training: Калибровка anomaly + export bundle zip
+    Training-->>Admin: {NAME}.zip для Blob / inference
 ```
 
 ## Технологический стек
@@ -292,4 +298,5 @@ sequenceDiagram
 - [Frontend документация](frontend/README.md)
 - [Inference документация](inference/README.md)
 - [Training документация](training/README.md)
+- [Model bundle](training/MODEL_BUNDLE.md) · [Anomaly detection](training/ANOMALY_DETECTION.md)
 

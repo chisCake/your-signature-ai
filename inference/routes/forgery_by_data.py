@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from typing import Optional, List, Union
 import logging
 import torch
-import torch.nn.functional as F
 
 from dependencies import get_supabase_client, get_model_loader
 from utils.supabase_client import SupabaseClient
@@ -15,6 +14,8 @@ from utils.model_loader import ModelLoader
 from utils.preprocessing import parse_csv_signature_data, to_numpy_points
 from utils.feature_runtime import build_model_features
 from utils.model_manager import SLOT_CURRENT
+from utils.forgery_schemas import ForgeryAnalysisResponse
+from utils.forgery_analysis import verify_embeddings
 
 
 logger = logging.getLogger(__name__)
@@ -31,41 +32,18 @@ class ForgeryByDataRequest(BaseModel):
     ]  # CSV строка или список списков [t,x,y,p]
 
 
-class ForgeryAnalysisResponse(BaseModel):
-    """Ответ с результатом анализа подделки"""
-
-    is_forgery: bool
-    similarity_score: float
-    threshold: float
-    error: Optional[str] = None
-
-
 @router.post("/", response_model=ForgeryAnalysisResponse)
 async def analyze_forgery_by_data(
     request_body: ForgeryByDataRequest,
     supabase_client: SupabaseClient = Depends(get_supabase_client),
     model_loader: ModelLoader = Depends(get_model_loader),
 ):
-    """
-    Анализ подделки по ID оригинальной подписи и данным поддельной подписи
-
-    Args:
-        request_body: Валидированное тело запроса
-        supabase_client: Клиент Supabase
-        model_loader: Загрузчик модели
-
-    Returns:
-        Результат анализа подделки
-    """
-    # Теперь мы получаем ID напрямую из валидированного объекта
     original_id = request_body.original_id
 
     try:
         logger.info("=== FORGERY BY DATA REQUEST START ===")
         logger.info(f"Analyzing forgery by data: original={original_id}")
-        logger.info(f"Forgery data type: {type(request_body.forgery_data)}")
 
-        # --- Шаг 1: Получение данных оригинальной подписи ---
         original_data = supabase_client.get_signature_data(original_id, "genuine")
         if not original_data:
             raise HTTPException(
@@ -73,19 +51,11 @@ async def analyze_forgery_by_data(
                 detail=f"Original signature {original_id} not found in genuine signatures",
             )
 
-        # --- Шаг 2: Обработка данных поддельной подписи ---
-        forgery_data: List[List[float]]
-
         if isinstance(request_body.forgery_data, str):
-            # Если это CSV строка, парсим её
-            logger.info("Parsing CSV forgery data")
             forgery_data = parse_csv_signature_data(request_body.forgery_data)
         else:
-            # Если это уже список списков, используем как есть
-            logger.info("Using forgery data as list of lists")
             forgery_data = request_body.forgery_data
 
-        # Проверка валидности данных (для numpy array используем len, для списка - обычную проверку)
         if forgery_data is None or len(forgery_data) == 0:
             raise HTTPException(
                 status_code=400,
@@ -93,7 +63,6 @@ async def analyze_forgery_by_data(
             )
 
         pipeline = model_loader.feature_pipeline
-        threshold = model_loader.verification_threshold
         bundle_dir = SLOT_CURRENT
 
         original_features = build_model_features(
@@ -103,37 +72,25 @@ async def analyze_forgery_by_data(
             to_numpy_points(forgery_data), pipeline, bundle_dir
         )
 
-        # Преобразуем в тензоры PyTorch
         original_tensor = torch.from_numpy(original_features).float().unsqueeze(0)
         forgery_tensor = torch.from_numpy(forgery_features).float().unsqueeze(0)
 
-        # --- Шаг 4: Получение эмбеддингов и анализ ---
         original_embedding = model_loader.encode_signature(original_tensor)
         forgery_embedding = model_loader.encode_signature(forgery_tensor)
 
-        # Вычисляем косинусное сходство
-        similarity_score = float(
-            F.cosine_similarity(original_embedding, forgery_embedding, dim=1)
+        result = verify_embeddings(
+            model_loader, original_embedding, forgery_embedding
         )
-
-        is_forgery = similarity_score < threshold
 
         logger.info(
-            f"Analysis completed: similarity={similarity_score:.4f}, is_forgery={is_forgery}"
+            f"Analysis completed: similarity={result.similarity_score:.4f}, "
+            f"is_forgery={result.is_forgery}, is_not_signature={result.is_not_signature}"
         )
-
-        result = ForgeryAnalysisResponse(
-            is_forgery=is_forgery,
-            similarity_score=similarity_score,
-            threshold=threshold,
-        )
-
-        logger.info(f"=== FORGERY BY DATA REQUEST SUCCESS ===")
+        logger.info("=== FORGERY BY DATA REQUEST SUCCESS ===")
         return result
 
-    except HTTPException as e:
-        logger.error(f"=== FORGERY BY DATA HTTP ERROR ===")
-        logger.error(f"HTTP Exception: {e.status_code} - {e.detail}")
+    except HTTPException:
+        logger.error("=== FORGERY BY DATA HTTP ERROR ===")
         raise
     except Exception as e:
         logger.error(f"=== FORGERY BY DATA GENERAL ERROR ===")

@@ -13,6 +13,7 @@ import psutil
 import torch
 
 from memory_config import MemoryConfig
+from utils.anomaly_detector import AnomalyDetector
 from utils.bundle import load_manifest, validate_bundle_dir
 
 logger = logging.getLogger(__name__)
@@ -61,10 +62,12 @@ class ModelLoader:
 
         self.device = self._get_device()
         self.model: Optional[Any] = None
+        self.anomaly_detector: Optional[AnomalyDetector] = None
         self.is_model_loaded = False
         self.model_config: Dict[str, Any] = {}
 
         self.load_model()
+        self._load_anomaly_detector()
 
     def _get_device(self) -> torch.device:
         if torch.cuda.is_available():
@@ -127,6 +130,36 @@ class ModelLoader:
             self.verification_threshold,
         )
 
+    def _load_anomaly_detector(self) -> None:
+        anomaly_cfg = self.manifest.get("anomaly") or {}
+        if not anomaly_cfg.get("enabled", False):
+            raise ValueError(
+                f"Bundle {self.bundle_name} missing required anomaly detector "
+                "(manifest.anomaly.enabled)"
+            )
+        params_name = anomaly_cfg.get("files", {}).get("params", "anomaly_params.npz")
+        params_path = self.bundle_dir / params_name
+        if not params_path.exists():
+            raise FileNotFoundError(f"Anomaly params not found: {params_path}")
+        self.anomaly_detector = AnomalyDetector.from_npz(
+            params_path, manifest_section=anomaly_cfg
+        )
+        logger.info(
+            "Loaded anomaly detector (threshold=%.4f)",
+            self.anomaly_detector.threshold,
+        )
+
+    def check_candidate_anomaly(
+        self, embedding: torch.Tensor
+    ) -> tuple[bool, float, float]:
+        """Returns (is_not_signature, anomaly_score, anomaly_threshold)."""
+        if self.anomaly_detector is None:
+            raise RuntimeError("Anomaly detector is not loaded")
+        emb_np = embedding.detach().cpu().numpy().reshape(-1)
+        score = self.anomaly_detector.score(emb_np)
+        thr = self.anomaly_detector.threshold
+        return score > thr, float(score), float(thr)
+
     def is_loaded(self) -> bool:
         return self.is_model_loaded and self.model is not None
 
@@ -160,6 +193,9 @@ class ModelLoader:
             "model_type": "SignatureEncoder",
             "feature_pipeline": self.feature_pipeline,
             "verification_threshold": self.verification_threshold,
+            "anomaly_threshold": (
+                self.anomaly_detector.threshold if self.anomaly_detector else None
+            ),
             "manifest": {
                 "training_summary": self.manifest.get("training_summary"),
                 "verification": self.manifest.get("verification"),

@@ -249,7 +249,7 @@ erDiagram
 
 **Поля**:
 - `id` (UUID, PK) - ID модели
-- `version` (VARCHAR(20)) - Версия модели (например, "v1", "v2")
+- `version` (VARCHAR(64)) - Версия / имя bundle модели (например, "temp-quick", "hybrid-detector-v1-1500")
 - `admin_id` (UUID, FK) - ID администратора, загрузившего модель
 - `metadata` (JSONB) - Метаданные модели
 - `description` (TEXT) - Описание модели

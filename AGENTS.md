@@ -71,13 +71,15 @@ Canvas → points `{timestamp,x,y,p}` → `POST /api/signatures` → `genuine_si
 
 ### Verification
 
-Client or Next layer → inference `POST /forgery-by-data/` or `/forgery-by-id/` → embeddings → cosine similarity → `is_forgery` (threshold **0.7 hardcoded today** — should come from model metadata; see roadmap).
+Client or Next layer → inference `POST /forgery-by-data/` or `/forgery-by-id/` → embeddings → optional **Mahalanobis** on candidate (`manifest.anomaly`) → cosine similarity → `is_forgery` (threshold from **`manifest.verification.threshold`**).
+
+Reject invalid stroke: `is_not_signature`, `rejection_reason: "input_not_a_signature"`. See `docs/training/ANOMALY_DETECTION.md`.
 
 Direct browser → inference is **acceptable**.
 
 ### Training → deploy model
 
-`training/main.ipynb` (gitignored, Colab working copy) → sync via **`npm run notebook:sync`** → `training/main.example.ipynb` (tracked) + `training/src/*` → checkpoint → admin uploads via UI → **Vercel Blob** + `models` table → inference loads active model (hotswap for **admin UI**, not agent workflows).
+`training/main.ipynb` (gitignored) ↔ **`npm run notebook:main-to-example`** / **`notebook:example-to-main`** → `training/main.example.ipynb` + `training/src/*` → `TrainingRunner` → anomaly calibration → **`export_model_bundle`** (`NAME` in export cell for zip/manifest name) → admin upload **zip** → **Vercel Blob** + `models` table → inference `models/current/` (hotswap via admin UI).
 
 ### Controlled collection (important)
 
@@ -130,6 +132,7 @@ Owner uses topic branches (`dev`, `dev-inference`, …). If the task touches ano
 - `docs/API/FRONTEND_API.md`, `docs/API/INFERENCE_API.md`
 - `docs/GUIDES/SETUP.md`, `docs/GUIDES/DEPLOYMENT.md`
 - `docs/ROADMAP.md` — priorities
+- `docs/training/MODEL_BUNDLE.md`, `docs/training/ANOMALY_DETECTION.md` — export zip, Mahalanobis gate
 
 **Ignore for accuracy:** `docs/diagrams/*` (may be stale until owner refreshes).
 

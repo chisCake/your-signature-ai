@@ -118,8 +118,11 @@ supabase db reset
 1. Откройте `training/main.example.ipynb` из репозитория в Google Colab (Save a copy → работайте как `main.ipynb` локально / на Drive)
 2. Подключите Google Drive
 3. Настройте переменные окружения через Secrets
-4. Запустите ячейки по порядку
-5. После изменения ячеек: `npm run notebook:sync` из корня репозитория, затем коммит `main.example.ipynb`
+4. Запустите ячейки по порядку (обучение → при необходимости anomaly → export bundle)
+5. В ячейке **сборки bundle** задайте `NAME = 'my-model'` для имени zip и записи в Blob (`my-model.zip`)
+6. После изменения ячеек: `npm run notebook:main-to-example` из корня репозитория, затем коммит `main.example.ipynb`
+
+См. [MODEL_BUNDLE.md](../training/MODEL_BUNDLE.md), [ANOMALY_DETECTION.md](../training/ANOMALY_DETECTION.md).
 
 ## Настройка Supabase
 
@@ -173,11 +176,11 @@ supabase start
 
 ### 3. Загрузка модели
 
-Если у вас есть обученная модель:
+Если есть обученный **model bundle** (`{NAME}.zip` из notebook):
 
-1. Скопируйте `.pt` и `.py` файлы в `inference/models/`
-2. Перезапустите inference сервер
-3. Проверьте `/model/info` endpoint
+1. **Production:** admin UI → upload zip → activate (Blob + `models/current/`)
+2. **Локально:** распакуйте zip в `inference/models/current/` или задайте `MODEL_NAME` и положите zip в Blob/local flow из [MODEL_MANAGEMENT.md](../inference/MODEL_MANAGEMENT.md)
+3. Проверьте `GET /health` и `GET /model/info`
 
 ## Troubleshooting
 
@@ -189,9 +192,9 @@ supabase start
 
 ### Проблемы с моделями
 
-- Убедитесь, что файлы `.pt` и `.py` совместимы
-- Проверьте логи inference сервера
-- Убедитесь, что модель загружена: `GET /health`
+- Bundle: один `manifest.json`, `encoder.py` + `weights.pt` из одного run; при anomaly — `anomaly_params.npz`
+- `feature_pipeline` в manifest должен совпадать с тем, на чём учили
+- Проверьте логи inference и `GET /health`
 
 ### Проблемы с портами
 

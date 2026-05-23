@@ -11,9 +11,10 @@ Prioritized work items for Your Sign AI. This file is the living backlog; update
 ## P1 — Model / inference contract (highest product risk)
 
 - [x] **Feature pipeline sync**: bundle `features.py` + `manifest.json` on inference; `models/current/` slot; threshold from manifest
-- [x] **Model bundle zip**: training `export_bundle.py` → Blob `models/{name}.zip`; admin upload/activate/rollback
-- [ ] **Verification threshold**: replace hardcoded `0.7` with value from trained model metadata (same source as features)
-- [ ] **Verification UX**: extend API/UI output (similarity + interpretations / stats) beyond bare `is_forgery`
+- [x] **Model bundle zip**: training `export_bundle.py` → Blob `models/{name}.zip`; admin upload/activate/rollback; notebook `NAME` для имени zip/manifest
+- [x] **Verification threshold**: cosine threshold из `manifest.verification` (EER на val)
+- [x] **Anomaly detector (Mahalanobis)**: post-training calibration → `anomaly_params.npz`; REJECT `input_not_a_signature` на inference + UI
+- [ ] **Verification UX**: richer copy / stats beyond similarity % (anomaly fields уже в API)
 
 ## P2 — Deployment and CORS
 

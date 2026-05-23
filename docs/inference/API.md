@@ -73,30 +73,18 @@ Inference API предоставляет endpoints для верификации
 }
 ```
 
-**Response**:
-```json
-{
-  "is_forgery": true,
-  "similarity_score": 0.45,
-  "threshold": 0.7,
-  "original_id": "uuid-оригинальной-подписи",
-  "forgery_id": "uuid-поддельной-подписи",
-  "error": null
-}
-```
+**Response** — см. актуальную схему в [INFERENCE_API.md](../API/INFERENCE_API.md) (`threshold` из manifest, поля `is_not_signature`, `anomaly_score`, …).
 
 **Status Codes**:
 - `200` - Успешный анализ
 - `404` - Подпись не найдена
 - `500` - Ошибка обработки
 
-**Поля ответа**:
-- `is_forgery` (boolean) - Является ли подпись подделкой
-- `similarity_score` (float) - Оценка схожести (0-1, где 1 = идентичны)
-- `threshold` (float) - Порог для определения подделки
-- `original_id` (string) - ID оригинальной подписи
-- `forgery_id` (string) - ID проверяемой подписи
-- `error` (string | null) - Сообщение об ошибке, если есть
+**Поля ответа** (основные):
+- `is_forgery`, `similarity_score`, `threshold`
+- `is_not_signature`, `rejection_reason` — отклонение Mahalanobis («не подпись»)
+- `anomaly_score`, `anomaly_threshold` — если в bundle включён anomaly
+- `error` — при сбое анализа
 
 ### POST /forgery-by-data/
 
@@ -118,17 +106,7 @@ Inference API предоставляет endpoints для верификации
 }
 ```
 
-**Response**:
-```json
-{
-  "is_forgery": true,
-  "similarity_score": 0.45,
-  "threshold": 0.7,
-  "original_id": "uuid-оригинальной-подписи",
-  "forgery_id": null,
-  "error": null
-}
-```
+**Response** — как у `/forgery-by-id/` ([INFERENCE_API.md](../API/INFERENCE_API.md)).
 
 **Status Codes**:
 - `200` - Успешный анализ

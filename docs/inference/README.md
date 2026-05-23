@@ -17,8 +17,10 @@ inference/
 │   ├── model.py           # Управление моделью
 │   └── model_upload.py    # Загрузка моделей
 ├── utils/                  # Утилиты
-│   ├── model_loader.py    # Загрузчик моделей
-│   ├── model_manager.py   # Менеджер моделей
+│   ├── model_loader.py    # Bundle loader (encoder + manifest + anomaly)
+│   ├── model_manager.py   # Blob slots current/previous
+│   ├── forgery_analysis.py # Anomaly gate + cosine verify
+│   ├── anomaly_detector.py
 │   ├── preprocessing.py   # Предобработка данных
 │   ├── supabase_client.py # Клиент Supabase
 │   └── blob_client.py     # Клиент Blob Storage
@@ -40,7 +42,7 @@ inference/
 
 ## Основные функции
 
-1. **Верификация подписей** - Сравнение двух подписей на схожесть
+1. **Верификация подписей** - Anomaly gate (опционально) + cosine similarity
 2. **Управление моделями** - Загрузка, активация, переключение моделей
 3. **Health monitoring** - Проверка состояния сервера и модели
 4. **Hotswap моделей** - Переключение моделей без downtime
@@ -115,9 +117,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ### Загрузка модели
 
-Модель состоит из двух файлов:
-- `.pt` - Веса модели (PyTorch checkpoint)
-- `.py` - Определение архитектуры модели
+Загружается **model bundle zip** (`manifest.json`, `weights.pt`, `encoder.py`, `features.py`, опционально `anomaly_params.npz`). См. [MODEL_MANAGEMENT.md](MODEL_MANAGEMENT.md) и [MODEL_BUNDLE.md](../training/MODEL_BUNDLE.md).
 
 ### Hotswap
 

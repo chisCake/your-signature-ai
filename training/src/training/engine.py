@@ -81,6 +81,7 @@ def train_one_epoch(
         "nan_embeddings": 0,
         "nan_distances": 0,
         "empty_triplets": 0,
+        "inf_grad_skips": 0,
     }
 
     step = 0
@@ -90,8 +91,8 @@ def train_one_epoch(
     logger.info(f"Starting training epoch with {len(dataloader)} batches")
     logger.info(f"Gradient accumulation steps: {grad_accum_steps}")
 
-    # Create progress bar with dynamic postfix
-    pbar = tqdm(dataloader, desc="train", unit="batch")
+    # leave=False: bar clears after epoch so logs don't get extra blank lines
+    pbar = tqdm(dataloader, desc="train", unit="batch", leave=False, dynamic_ncols=True)
     for batch_idx, batch in enumerate(pbar):
         batch_start_time = time.time()
         epoch_metrics["total_batches"] += 1
@@ -193,8 +194,27 @@ def train_one_epoch(
             step += 1
 
             if step % grad_accum_steps == 0:
-                # Gradient clipping
                 scaler.unscale_(optimizer)
+
+                has_inf = False
+                for p in model.parameters():
+                    if p.grad is not None and (
+                        torch.isinf(p.grad).any() or torch.isnan(p.grad).any()
+                    ):
+                        has_inf = True
+                        break
+
+                if has_inf:
+                    epoch_metrics["inf_grad_skips"] += 1
+                    logger.warning(
+                        f"Batch {batch_idx}: NaN/Inf in gradients after unscale; "
+                        "skipping optimizer step"
+                    )
+                    optimizer.zero_grad()
+                    scaler.update()
+                    step = 0
+                    continue
+
                 grad_norm = torch.nn.utils.clip_grad_norm_(
                     model.parameters(),
                     max_norm=grad_clip_max_norm,  # Applied to accumulated gradients
@@ -293,8 +313,9 @@ def train_one_epoch(
         else 0.0
     )
 
+    pbar.close()
+
     # Log epoch summary
-    print()
     logger.info(
         f"Epoch completed: {epoch_metrics['valid_batches']}/{epoch_metrics['total_batches']} batches"
     )
@@ -309,6 +330,8 @@ def train_one_epoch(
         logger.warning(f"NaN losses: {epoch_metrics['nan_losses']}")
     if epoch_metrics["empty_triplets"] > 0:
         logger.warning(f"Empty triplets: {epoch_metrics['empty_triplets']}")
+    if epoch_metrics["inf_grad_skips"] > 0:
+        logger.warning(f"Skipped optimizer steps (inf/nan grads): {epoch_metrics['inf_grad_skips']}")
 
     return {
         "avg_loss": avg_loss,
@@ -320,6 +343,7 @@ def train_one_epoch(
         "oom_errors": epoch_metrics["oom_errors"],
         "nan_losses": epoch_metrics["nan_losses"],
         "empty_triplets": epoch_metrics["empty_triplets"],
+        "inf_grad_skips": epoch_metrics["inf_grad_skips"],
     }
 
 
@@ -349,7 +373,7 @@ def evaluate(
     logger.info(f"Starting evaluation with {len(dataloader)} batches")
 
     try:
-        pbar = tqdm(dataloader, desc="eval")
+        pbar = tqdm(dataloader, desc="eval", leave=False, dynamic_ncols=True)
         for batch_idx, batch in enumerate(pbar):
             try:
                 x, labels, mask = batch
@@ -388,7 +412,7 @@ def evaluate(
         all_emb = torch.cat(all_emb, dim=0)
         all_labels = torch.cat(all_labels, dim=0)
 
-        print()
+        pbar.close()
         logger.info(f"Evaluation completed: {all_emb.size(0)} samples")
 
         # Compute metrics

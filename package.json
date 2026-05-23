@@ -27,6 +27,7 @@
     "reset-db": "supabase db reset",
     "reset-db-with-test-users": "supabase db reset && npm run test-users",
     "reset-db-and-populate": "supabase db reset && npm run test-users && npm run generate-pseudousers",
-    "notebook:sync": "node scripts/sync-training-notebook.js"
+    "notebook:main-to-example": "node scripts/sync-training-notebook.js main-to-example",
+    "notebook:example-to-main": "node scripts/sync-training-notebook.js example-to-main"
   }
 }

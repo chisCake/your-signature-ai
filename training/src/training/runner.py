@@ -6,6 +6,7 @@ import numpy as np
 import torch
 from datetime import datetime
 import sys
+from tqdm import tqdm
 from datetime import datetime as _dt
 import json
 import csv
@@ -25,6 +26,10 @@ from torch.optim.lr_scheduler import OneCycleLR, CosineAnnealingWarmRestarts
 from torch.nn import TripletMarginLoss
 from torch.amp import GradScaler
 from training.plots import generate_quality_plots, generate_eval_plots
+from training.anomaly_calibration import (
+    calibrate_anomaly_detector,
+    write_data_splits_json,
+)
 
 
 def set_seed(seed: int) -> None:
@@ -57,9 +62,8 @@ class SimpleLogger:
         """Log an INFO message."""
         formatted_msg = self._format_message(message, level="INFO")
 
-        # Print to console
-        print(formatted_msg)
-        sys.stdout.flush()
+        # tqdm.write avoids extra blank lines when mixed with progress bars
+        tqdm.write(formatted_msg)
 
         # Write to file - open in append mode each time
         try:
@@ -68,41 +72,35 @@ class SimpleLogger:
                 f.flush()
                 os.fsync(f.fileno())  # Force OS to flush to disk
         except Exception as e:
-            print(f"Warning: Failed to write to log file: {e}")
+            tqdm.write(f"Warning: Failed to write to log file: {e}")
 
     def warning(self, message: str):
         """Log a WARNING message."""
         formatted_msg = self._format_message(message, level="WARNING")
 
-        # Print to console
-        print(formatted_msg)
-        sys.stdout.flush()
+        tqdm.write(formatted_msg)
 
-        # Write to file - open in append mode each time
         try:
             with open(self.log_file_path, "a", encoding="utf-8") as f:
                 f.write(formatted_msg + "\n")
                 f.flush()
-                os.fsync(f.fileno())  # Force OS to flush to disk
+                os.fsync(f.fileno())
         except Exception as e:
-            print(f"Warning: Failed to write to log file: {e}")
+            tqdm.write(f"Warning: Failed to write to log file: {e}")
 
     def error(self, message: str):
         """Log an ERROR message."""
         formatted_msg = self._format_message(message, level="ERROR")
 
-        # Print to console
-        print(formatted_msg)
-        sys.stdout.flush()
+        tqdm.write(formatted_msg)
 
-        # Write to file - open in append mode each time
         try:
             with open(self.log_file_path, "a", encoding="utf-8") as f:
                 f.write(formatted_msg + "\n")
                 f.flush()
-                os.fsync(f.fileno())  # Force OS to flush to disk
+                os.fsync(f.fileno())
         except Exception as e:
-            print(f"Warning: Failed to write to log file: {e}")
+            tqdm.write(f"Warning: Failed to write to log file: {e}")
 
 
 @dataclass
@@ -203,9 +201,9 @@ class TrainingRunner:
         )
 
     def _create_scheduler(self, optimizer: AdamW, steps_per_epoch: int) -> OneCycleLR:
-        # More conservative max_lr for stability with triplet loss
-        # Reduced from 3.0x to 2.0x base_lr to prevent gradient explosion
-        max_lr = self.train_cfg.learning_rate * 2.0
+        max_lr = (
+            self.train_cfg.learning_rate * self.train_cfg.onecycle_max_lr_factor
+        )
 
         # Calculate warmup steps based on warmup_epochs
         warmup_steps = steps_per_epoch * self.train_cfg.warmup_epochs
@@ -624,6 +622,38 @@ class TrainingRunner:
         wrapper.collate_fn = wrapper.collate_fn
         return wrapper
 
+    def _calibrate_anomaly_if_enabled(self, run_dir: str, device: torch.device) -> None:
+        """Fit Mahalanobis detector; raise if bundle requires anomaly and calibration fails."""
+        if not self.train_cfg.anomaly_enabled:
+            self.log("Anomaly calibration skipped (anomaly_enabled=False)")
+            return
+
+        self.log("=" * 80)
+        self.log("ANOMALY DETECTOR CALIBRATION")
+        self.log("=" * 80)
+        try:
+            _detector, stats = calibrate_anomaly_detector(
+                run_dir,
+                dataset_cfg=self.dataset_cfg,
+                model_cfg=self.model_cfg,
+                train_cfg=self.train_cfg,
+                device=device,
+                full_dataset=getattr(self, "_full_dataset", None),
+                user_index=getattr(self, "_user_index", None),
+                log_fn=self.log,
+            )
+            self.anomaly_stats = stats
+            self.log(
+                f"Anomaly calibration done: threshold={stats['threshold']:.4f}, "
+                f"val_pass_rate={stats['val_pass_rate']:.4f}, "
+                f"synthetic_reject_rate={stats['synthetic_reject_rate']:.4f}"
+            )
+        except Exception as e:
+            if self.train_cfg.anomaly_include_in_bundle:
+                self.log(f"Anomaly calibration failed (bundle export will fail): {e}")
+                raise
+            self.log(f"Anomaly calibration failed (ignored): {e}")
+
     def _try_export_bundle(
         self,
         run_dir: str,
@@ -644,6 +674,14 @@ class TrainingRunner:
             self.log("Bundle export skipped: best_by_eer.pt not found")
             return False
 
+        anomaly_npz = os.path.join(run_dir, "anomaly_params.npz")
+        if self.train_cfg.anomaly_include_in_bundle and not os.path.exists(anomaly_npz):
+            self.log(
+                f"Bundle export failed: anomaly_include_in_bundle=True but "
+                f"{anomaly_npz} missing"
+            )
+            return False
+
         try:
             val_emb_export = None
             val_labels_export = None
@@ -661,6 +699,7 @@ class TrainingRunner:
             from training.export_bundle import export_model_bundle
 
             bundle_name = run_name or os.path.basename(run_dir)
+            anomaly_stats = getattr(self, "anomaly_stats", None)
             zip_path = export_model_bundle(
                 run_dir,
                 bundle_name,
@@ -668,6 +707,8 @@ class TrainingRunner:
                 val_labels=val_labels_export,
                 val_eer=val_eer_export,
                 val_auc=val_auc_export,
+                anomaly_stats=anomaly_stats,
+                include_anomaly=self.train_cfg.anomaly_include_in_bundle,
             )
             self.log(f"Model bundle exported: {zip_path}")
             return True
@@ -749,6 +790,7 @@ class TrainingRunner:
             self.log(f"Warning: Failed to save model file: {e}")
 
         bundle_exported = False
+        self.anomaly_stats = None
         model: Optional[SignatureEncoder] = None
         val_loader = None
 
@@ -786,6 +828,7 @@ class TrainingRunner:
 
             # Create dataset sample if specified
             full_dataset = self._create_dataset_sample(full_dataset)
+            self._full_dataset = full_dataset
             self.log(f"Using dataset: {len(full_dataset)} samples")
 
             # Create data splits
@@ -812,6 +855,17 @@ class TrainingRunner:
                 "val_user_codes": val_user_codes,
                 "test_user_codes": test_user_codes,
             }
+            write_data_splits_json(
+                run_dir,
+                seed=self.train_cfg.seed,
+                train_ratio=self.train_cfg.train_ratio,
+                val_ratio=self.train_cfg.val_ratio,
+                test_ratio=self.train_cfg.test_ratio,
+                train_user_codes=train_user_codes,
+                val_user_codes=val_user_codes,
+                test_user_codes=test_user_codes,
+            )
+            self.log(f"Wrote data splits to {os.path.join(run_dir, 'data_splits.json')}")
 
             # Create split datasets with augmentation for training
             self.log("Creating split datasets...")
@@ -1023,6 +1077,7 @@ class TrainingRunner:
 
             for epoch in range(start_epoch, self.train_cfg.epochs):
                 epoch_start_time = time.time()
+                print()
                 self.log(f"=== Epoch {epoch+1}/{self.train_cfg.epochs} ===")
 
                 # Adaptive triplet mining strategy based on stagnation
@@ -1231,6 +1286,8 @@ class TrainingRunner:
             except Exception as e:
                 self.log(f"Final test evaluation failed: {e}")
                 test_metrics = {"eer": 1.0, "auc": 0.5, "eval_time": 0.0}
+
+            self._calibrate_anomaly_if_enabled(run_dir, device)
 
             self.log("Exporting model bundle...")
             bundle_exported = self._try_export_bundle(

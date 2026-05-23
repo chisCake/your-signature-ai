@@ -96,7 +96,10 @@ class TrainingConfig:
     learning_rate: float = (
         0.0003  # Уменьшено для более глубокой архитектуры (3 conv + 3 GRU)
     )
-    weight_decay: float = 3e-05  # Рекомендуемый weight decay
+    weight_decay: float = 1e-4   
+    # Рекомендуемый weight decay
+    # Update: Claude suggestion (old: 3e-05)
+    
     mixed_precision: bool = True  # AMP для экономии VRAM
     seed: int = 42
     device: Optional[str] = None
@@ -141,10 +144,20 @@ class TrainingConfig:
     split_by_users: bool = True
     # gradient clipping
     grad_clip_max_norm: float = (
-        0.5  # Усилен для более глубокой архитектуры (предотвращение взрыва градиентов)
+        0.3  
     )
+    # Усилен для более глубокой архитектуры (предотвращение взрыва градиентов)
+    # Update: Claude suggestion (old: 0.5)
+
     # Learning rate scheduling
-    warmup_epochs: int = 3  # Number of epochs for LR warmup
+    onecycle_max_lr_factor: float = (
+        1.5  # max_lr = learning_rate * factor (OneCycleLR peak)
+    )
+    # Update: Claude suggestion (old: 2.0)
+
+    warmup_epochs: int = 10  # Number of epochs for LR warmup
+    # Update: Claude suggestion (old: 3)
+    
     # lr_reduction_factor deprecated (no manual LR changes)
     lr_reduction_factor: float = 1.0
 
@@ -152,6 +165,13 @@ class TrainingConfig:
     log_frequency: int = (
         1  # Частота логгирования (каждые N батчей, по умолчанию каждый батч)
     )
+
+    # Mahalanobis anomaly detector (post-training, on frozen embeddings)
+    anomaly_enabled: bool = True
+    anomaly_include_in_bundle: bool = True
+    anomaly_percentile: float = 99.0
+    anomaly_synthetic_n: int = 500
+    anomaly_min_samples: int = 256
 
     # Legacy fields (auto-computed from output_dir + timestamp, kept for compatibility)
     checkpoint_dir: Optional[str] = None

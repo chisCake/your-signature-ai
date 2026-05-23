@@ -12,6 +12,7 @@ Inference API предоставляет endpoints для верификации
 ## OpenAPI документация
 
 FastAPI автоматически генерирует OpenAPI документацию:
+
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
@@ -22,6 +23,7 @@ FastAPI автоматически генерирует OpenAPI документ
 Информация о сервере.
 
 **Response**:
+
 ```json
 {
   "name": "Signature Inference Server",
@@ -35,6 +37,7 @@ FastAPI автоматически генерирует OpenAPI документ
 Проверка состояния сервера и модели.
 
 **Response**:
+
 ```json
 {
   "status": "healthy",
@@ -57,6 +60,7 @@ FastAPI автоматически генерирует OpenAPI документ
 Анализ подделки по ID подписей из БД.
 
 **Request**:
+
 ```json
 {
   "original_id": "uuid",
@@ -65,22 +69,47 @@ FastAPI автоматически генерирует OpenAPI документ
 ```
 
 **Response**:
+
 ```json
 {
   "is_forgery": true,
   "similarity_score": 0.45,
-  "threshold": 0.7,
+  "threshold": 0.437,
+  "is_not_signature": false,
+  "rejection_reason": null,
+  "anomaly_score": 12.3,
+  "anomaly_threshold": 37.05,
   "original_id": "uuid",
   "forgery_id": "uuid",
   "error": null
 }
 ```
 
+`threshold` берётся из `manifest.verification.threshold` активного bundle.
+
+**Отклонение «не подпись»** (Mahalanobis, если в bundle есть `anomaly.enabled`):
+
+```json
+{
+  "is_forgery": true,
+  "is_not_signature": true,
+  "rejection_reason": "input_not_a_signature",
+  "similarity_score": 0.0,
+  "threshold": 0.437,
+  "anomaly_score": 48.2,
+  "anomaly_threshold": 37.05,
+  "error": null
+}
+```
+
+Проверяется эмбеддинг **кандидата** (подделка / нарисованный штрих), не эталон из БД.
+
 ### POST /forgery-by-data/
 
 Анализ подделки по данным.
 
 **Request** (CSV):
+
 ```json
 {
   "original_id": "uuid",
@@ -89,6 +118,7 @@ FastAPI автоматически генерирует OpenAPI документ
 ```
 
 **Request** (Array):
+
 ```json
 {
   "original_id": "uuid",
@@ -96,23 +126,14 @@ FastAPI автоматически генерирует OpenAPI документ
 }
 ```
 
-**Response**:
-```json
-{
-  "is_forgery": true,
-  "similarity_score": 0.45,
-  "threshold": 0.7,
-  "original_id": "uuid",
-  "forgery_id": null,
-  "error": null
-}
-```
+**Response** — те же поля, что у `/forgery-by-id/` (без `original_id` / `forgery_id` в схеме Pydantic; при необходимости смотрите OpenAPI `/docs`).
 
 ### GET /model/info
 
 Информация о всех моделях.
 
 **Response**:
+
 ```json
 {
   "active_model": "v1",
@@ -135,6 +156,7 @@ FastAPI автоматически генерирует OpenAPI документ
 Загрузка **model_bundle.zip** в Blob (`models/{name}.zip`).
 
 **Request** (multipart/form-data):
+
 ```
 model_name: string
 bundle_file: File (.zip)
@@ -143,21 +165,29 @@ swap_strategy: "zero_downtime" | "sequential"  # только если activate=
 ```
 
 **Response** (успех без активации):
+
 ```json
 {
   "success": true,
   "activated": false,
   "model_name": "sig-v3",
   "completed_stages": ["received", "unpack", "manifest", "pytorch_smoke", "blob", "database"],
-  "metadata_summary": { "verification_threshold": 0.734, "in_features": 21 }
+  "metadata_summary": {
+    "verification_threshold": 0.734,
+    "in_features": 21,
+    "feature_pipeline": ["x", "y", "p", "..."]
+  }
 }
 ```
+
+Zip должен содержать один `manifest.json`, `weights.pt`, `encoder.py`, `features.py`; при anomaly — `anomaly_params.npz`. См. [MODEL_BUNDLE.md](../training/MODEL_BUNDLE.md).
 
 ### POST /model/rollback
 
 Мгновенный откат: swap `models/current/` ↔ `models/previous/` без скачивания из Blob.
 
 **Response**:
+
 ```json
 { "success": true, "rolled_back": true, "model_name": "sig-v2" }
 ```
@@ -171,6 +201,7 @@ swap_strategy: "zero_downtime" | "sequential"  # только если activate=
 Активация модели.
 
 **Request**:
+
 ```json
 {
   "model_name": "v2"
@@ -178,6 +209,7 @@ swap_strategy: "zero_downtime" | "sequential"  # только если activate=
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -191,6 +223,7 @@ swap_strategy: "zero_downtime" | "sequential"  # только если activate=
 Удаление модели.
 
 **Request**:
+
 ```json
 {
   "model_name": "v1"
@@ -198,6 +231,7 @@ swap_strategy: "zero_downtime" | "sequential"  # только если activate=
 ```
 
 **Response**:
+
 ```json
 {
   "success": true,
@@ -296,4 +330,6 @@ const result = await response.json();
 
 - [Inference документация](../inference/API.md)
 - [Управление моделями](../inference/MODEL_MANAGEMENT.md)
+- [Model bundle (training)](../training/MODEL_BUNDLE.md)
+- [Детектор аномалий](../training/ANOMALY_DETECTION.md)
 

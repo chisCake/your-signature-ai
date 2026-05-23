@@ -9,19 +9,13 @@ Training проект Your Sign AI предназначен для обучен�
 ```
 training/
 ├── main.ipynb              # Рабочий notebook (gitignored, Colab)
-├── main.example.ipynb      # В репозитории: без outputs; npm run notebook:sync
-├── requirements.txt        # Зависимости Python
-└── src/                    # Исходный код
-    ├── config.py          # Конфигурация обучения
-    ├── models/            # Архитектуры моделей
-    │   └── signature_encoder.py
-    ├── training/           # Логика обучения
-    │   ├── trainer.py
-    │   ├── loss.py
-    │   └── metrics.py
-    ├── data/              # Загрузка данных
-    │   └── dataset.py
-    └── utils/             # Утилиты
+├── main.example.ipynb      # В репозитории; npm run notebook:main-to-example
+├── requirements.txt
+└── src/
+    ├── config.py           # Dataset / Model / TrainingConfig (+ anomaly_*)
+    ├── models/             # SignatureEncoder (hybrid)
+    ├── training/           # TrainingRunner, export_bundle, anomaly_calibration
+    └── data/               # LMDB, features.py, anomaly_generator
 ```
 
 ## Требования
@@ -104,12 +98,12 @@ PROJECT = '/content/drive/MyDrive/your-signature-ai/training'
 
 ## Процесс обучения
 
-1. **Загрузка данных** - Получение подписей из Supabase
-2. **Создание датасета** - Преобразование в LMDB формат
-3. **Инициализация модели** - Создание экземпляра модели
-4. **Обучение** - Цикл обучения на эпохах
-5. **Валидация** - Оценка на валидационном наборе
-6. **Сохранение** - Сохранение checkpoint и экспорт модели
+1. **Загрузка данных** — Supabase → LMDB (`build_lmdb_dataset`)
+2. **Обучение** — `TrainingRunner` (triplet, PK-sampling, EER на val)
+3. **Калибровка anomaly** — Mahalanobis на frozen embeddings (если `anomaly_enabled`)
+4. **Экспорт bundle** — `{NAME}.zip` с `manifest.json`, `weights.pt`, `encoder.py`, `features.py`
+
+Ячейки notebook: обучение → (опционально) перекалибровка anomaly → ручной export с `NAME`.
 
 ## Метрики
 
@@ -121,13 +115,16 @@ PROJECT = '/content/drive/MyDrive/your-signature-ai/training'
 
 ## Экспорт модели
 
-После обучения модель экспортируется в два файла:
-- `.pt` - Веса модели (PyTorch checkpoint)
-- `.py` - Определение архитектуры (для inference)
+**Model bundle zip** для inference — см. [MODEL_BUNDLE.md](MODEL_BUNDLE.md):
+
+- В ячейке export: `NAME = 'sig-v4'` задаёт имя zip и `manifest.bundle_name`
+- Порог верификации (cosine) и anomaly — в `manifest.json`
 
 ## Дополнительные ресурсы
 
 - [Датасет](DATASET.md)
 - [Архитектура модели](MODEL_ARCHITECTURE.md)
 - [Процесс обучения](TRAINING_PROCESS.md)
+- [Model bundle](MODEL_BUNDLE.md)
+- [Детектор аномалий](ANOMALY_DETECTION.md)
 

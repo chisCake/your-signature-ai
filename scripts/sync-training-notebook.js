@@ -1,8 +1,12 @@
 /**
- * Copy training/main.ipynb -> training/main.example.ipynb with cleared outputs.
- * Use before committing notebook structure changes (main.ipynb is gitignored).
+ * Sync training/main.ipynb <-> training/main.example.ipynb
  *
- * Usage: npm run notebook:sync
+ * main -> example: clears code cell outputs (for git commit; main.ipynb is gitignored)
+ * example -> main: copies as-is (refresh local working notebook from tracked template)
+ *
+ * Usage:
+ *   npm run notebook:main-to-example
+ *   npm run notebook:example-to-main
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -12,33 +16,76 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..');
 
-const DEFAULT_SOURCE = resolve(repoRoot, 'training/main.ipynb');
-const DEFAULT_TARGET = resolve(repoRoot, 'training/main.example.ipynb');
+const MAIN = resolve(repoRoot, 'training/main.ipynb');
+const EXAMPLE = resolve(repoRoot, 'training/main.example.ipynb');
+
+const DIRECTIONS = {
+  'main-to-example': { source: MAIN, target: EXAMPLE, clearOutputs: true },
+  'example-to-main': { source: EXAMPLE, target: MAIN, clearOutputs: false },
+};
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  let source = DEFAULT_SOURCE;
-  let target = DEFAULT_TARGET;
+  let direction = null;
+  let source = null;
+  let target = null;
+  let clearOutputs = null;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--source' && args[i + 1]) {
+    const arg = args[i];
+    if (arg === '--direction' && args[i + 1]) {
+      direction = args[++i];
+    } else if (arg === '--source' && args[i + 1]) {
       source = resolve(repoRoot, args[++i]);
-    } else if (args[i] === '--target' && args[i + 1]) {
+    } else if (arg === '--target' && args[i + 1]) {
       target = resolve(repoRoot, args[++i]);
-    } else if (args[i] === '-h' || args[i] === '--help') {
-      console.log(`Usage: npm run notebook:sync [-- --source PATH --target PATH]
-
-Defaults:
-  source  training/main.ipynb
-  target  training/main.example.ipynb`);
+    } else if (arg === '-h' || arg === '--help') {
+      printHelp();
       process.exit(0);
+    } else if (arg in DIRECTIONS) {
+      direction = arg;
+    } else {
+      console.error(`Unknown argument: ${arg}`);
+      printHelp();
+      process.exit(1);
     }
   }
 
-  return { source, target };
+  if (!direction) {
+    console.error('Missing direction. Use main-to-example or example-to-main.');
+    printHelp();
+    process.exit(1);
+  }
+
+  const preset = DIRECTIONS[direction];
+  if (!preset) {
+    console.error(`Unknown direction: ${direction}`);
+    printHelp();
+    process.exit(1);
+  }
+
+  return {
+    direction,
+    source: source ?? preset.source,
+    target: target ?? preset.target,
+    clearOutputs: clearOutputs ?? preset.clearOutputs,
+  };
 }
 
-function clearNotebook(nb) {
+function printHelp() {
+  console.log(`Usage:
+  npm run notebook:main-to-example
+  npm run notebook:example-to-main
+
+Or:
+  node scripts/sync-training-notebook.js <main-to-example|example-to-main> [--source PATH --target PATH]
+
+Directions:
+  main-to-example   training/main.ipynb -> training/main.example.ipynb (clears outputs)
+  example-to-main   training/main.example.ipynb -> training/main.ipynb (copy as-is)`);
+}
+
+function clearNotebookOutputs(nb) {
   if (!Array.isArray(nb.cells)) {
     throw new Error('Invalid notebook: missing cells array');
   }
@@ -59,11 +106,15 @@ function clearNotebook(nb) {
 }
 
 function main() {
-  const { source, target } = parseArgs();
+  const { direction, source, target, clearOutputs } = parseArgs();
 
   if (!existsSync(source)) {
     console.error(`Source not found: ${source}`);
-    console.error('Create training/main.ipynb (e.g. from Colab) and run again.');
+    if (direction === 'example-to-main') {
+      console.error('Ensure training/main.example.ipynb exists in the repo.');
+    } else {
+      console.error('Create training/main.ipynb (e.g. from Colab) and run again.');
+    }
     process.exit(1);
   }
 
@@ -76,13 +127,17 @@ function main() {
     process.exit(1);
   }
 
-  const clearedOutputs = clearNotebook(nb);
+  let clearedOutputs = 0;
+  if (clearOutputs) {
+    clearedOutputs = clearNotebookOutputs(nb);
+  }
 
   writeFileSync(target, `${JSON.stringify(nb, null, 1)}\n`, 'utf8');
 
   const cellCount = nb.cells?.length ?? 0;
-  console.log(`Wrote ${target}`);
-  console.log(`  cells: ${cellCount}, cleared output blobs: ${clearedOutputs}`);
+  console.log(`[${direction}] Wrote ${target}`);
+  console.log(`  from: ${source}`);
+  console.log(`  cells: ${cellCount}${clearOutputs ? `, cleared output blobs: ${clearedOutputs}` : ''}`);
 }
 
 main();

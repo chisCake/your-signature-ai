@@ -32,7 +32,7 @@ CREATE TABLE pseudousers (
 -- Таблица информации о модели
 CREATE TABLE models (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    version VARCHAR(20) NOT NULL,
+    version VARCHAR(64) NOT NULL,
     admin_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
     metadata JSONB,
     description TEXT,

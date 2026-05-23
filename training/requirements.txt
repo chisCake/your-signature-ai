@@ -15,6 +15,7 @@ pyyaml>=6.0
 python-dotenv>=1.0
 
 # === MACHINE LEARNING ===
+scipy>=1.11
 scikit-learn>=1.4
 albumentations>=1.4
 einops>=0.7

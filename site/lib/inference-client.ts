@@ -9,6 +9,10 @@ interface ForgeryAnalysisResponse {
   similarity_score: number;
   is_forgery: boolean;
   threshold: number;
+  is_not_signature?: boolean;
+  rejection_reason?: string | null;
+  anomaly_score?: number | null;
+  anomaly_threshold?: number | null;
   error?: string;
 }
 
@@ -297,9 +301,21 @@ export function formatForgeryResult(result: ForgeryAnalysisResponse) {
   );
   const isForgery = result.is_forgery;
 
+  if (result.is_not_signature) {
+    return {
+      similarityPercent,
+      isForgery: true,
+      isNotSignature: true,
+      threshold: thresholdPct,
+      similarityScore: result.similarity_score,
+      message: 'Ввод не похож на подпись',
+    };
+  }
+
   return {
     similarityPercent,
     isForgery,
+    isNotSignature: false,
     threshold: thresholdPct,
     similarityScore: result.similarity_score,
     message: isForgery
@@ -312,6 +328,7 @@ export function formatForgeryResult(result: ForgeryAnalysisResponse) {
  * Утилита для определения цвета результата анализа
  */
 export function getForgeryColor(result: ForgeryAnalysisResponse) {
+  if (result.is_not_signature) return 'text-amber-600';
   if (result.is_forgery) return 'text-red-600';
   return 'text-green-600';
 }

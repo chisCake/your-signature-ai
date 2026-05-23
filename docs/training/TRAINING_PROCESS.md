@@ -21,8 +21,9 @@ flowchart TD
     CheckMetrics -->|Нет улучшения| EarlyStop{Early stopping?}
     SaveCheckpoint --> EpochLoop
     EarlyStop -->|Продолжить| EpochLoop
-    EarlyStop -->|Остановить| ExportModel[Экспорт модели]
-    EpochLoop -->|Завершено| ExportModel
+    EarlyStop -->|Остановить| Anomaly[Калибровка anomaly]
+    EpochLoop -->|Завершено| Anomaly
+    Anomaly --> ExportModel[export_model_bundle zip]
     ExportModel --> End([Конец])
 ```
 
@@ -185,19 +186,26 @@ def save_checkpoint(model, optimizer, epoch, metrics):
     torch.save(checkpoint, 'last.pt')
 ```
 
-### 10. Экспорт модели
+### 10. Калибровка детектора аномалий
 
-```python
-# Загрузка best checkpoint
-checkpoint = torch.load('best_by_eer.pt')
-model.load_state_dict(checkpoint['model_state_dict'])
+Если `TrainingConfig.anomaly_enabled` (по умолчанию `true`):
 
-# Экспорт весов
-torch.save(model.state_dict(), 'model.pt')
+1. Загрузить `best_by_eer.pt`, `model.eval()`
+2. Собрать эмбеддинги **genuine** train / val (без аугментаций)
+3. `MahalanobisAnomalyDetector.fit` + порог по val percentile
+4. Сохранить `anomaly_params.npz`, `logs/anomaly_eval.json`
 
-# Экспорт кода модели
-export_model_code(model, 'model.py')
-```
+Подробнее: [ANOMALY_DETECTION.md](ANOMALY_DETECTION.md).
+
+### 11. Экспорт model bundle
+
+`TrainingRunner._try_export_bundle` → `export_model_bundle`:
+
+- Zip: `weights.pt`, `encoder.py` (из `model.py`), `features.py`, `manifest.json`, опционально `anomaly_params.npz`
+- Порог cosine — EER-optimal на val embeddings
+- Ручной export в notebook: переменная **`NAME`** (имя zip / `bundle_name`)
+
+Подробнее: [MODEL_BUNDLE.md](MODEL_BUNDLE.md).
 
 ## Конфигурация обучения
 
@@ -246,4 +254,6 @@ TrainingConfig(
 
 - [Датасет](DATASET.md)
 - [Архитектура модели](MODEL_ARCHITECTURE.md)
+- [Model bundle](MODEL_BUNDLE.md)
+- [Детектор аномалий](ANOMALY_DETECTION.md)
 

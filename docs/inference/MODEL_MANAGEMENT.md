@@ -9,6 +9,20 @@ Inference хранит в Blob только **`models/{bundle_name}.zip`**. На
 
 Старт: `MODEL_NAME` → list Blob → download zip → unpack `current/` → load RAM.
 
+## Содержимое bundle (zip)
+
+Один zip на модель, не пара `.pt` + `.py`:
+
+| Файл | Роль |
+|------|------|
+| `manifest.json` | `feature_pipeline`, `verification.threshold`, опционально `anomaly` |
+| `weights.pt` | Веса `SignatureEncoder` |
+| `encoder.py` | Архитектура (динамический import) |
+| `features.py` | Пайплайн признаков (синхрон с training) |
+| `anomaly_params.npz` | mean / cov_inv / threshold (если `anomaly.enabled`) |
+
+Сборка и имя zip (`NAME` в notebook): [MODEL_BUNDLE.md](../training/MODEL_BUNDLE.md).
+
 ## Архитектура
 
 ```mermaid
@@ -50,14 +64,16 @@ classDiagram
 - **UNLOADING** - Модель выгружается
 - **ERROR** - Ошибка при загрузке модели
 
-## Структура модели
+## Структура модели (в bundle)
 
-Модель состоит из двух файлов:
+1. **`weights.pt`** — checkpoint (`best_by_eer`)
+2. **`encoder.py`** — класс `SignatureEncoder` (копия `model.py` из training run)
+3. **`features.py`** — `apply_feature_pipeline` для inference
+4. **`manifest.json`** — пороги и метаданные
 
-1. **`.pt` файл** - Веса модели (PyTorch checkpoint)
-2. **`.py` файл** - Определение архитектуры модели (класс `SignatureEncoder`)
+Legacy-загрузка отдельных `.pt` + `.py` в корне `inference/models/` не используется для новых деплоев.
 
-### Пример .py файла
+### Пример encoder.py
 
 ```python
 import torch
@@ -81,9 +97,9 @@ class SignatureEncoder(nn.Module):
 
 ```bash
 curl -X POST http://localhost:8000/model/upload \
-  -F "model_name=v2" \
-  -F "pt_file=@models/v2.pt" \
-  -F "py_file=@models/v2.py" \
+  -F "model_name=sig-v4" \
+  -F "bundle_file=@sig-v4.zip" \
+  -F "activate=true" \
   -F "swap_strategy=zero_downtime"
 ```
 
@@ -254,4 +270,6 @@ logger.error(f"Failed to load model {model_name}: {error}")
 - [API документация](API.md)
 - [Предобработка](PREPROCESSING.md)
 - [Развертывание](DEPLOYMENT.md)
+- [Model bundle](../training/MODEL_BUNDLE.md)
+- [Детектор аномалий](../training/ANOMALY_DETECTION.md)
 

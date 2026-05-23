@@ -122,6 +122,24 @@ describe('inference-client formatting utilities', () => {
       expect(formatted.similarityPercent).toBe(99);
       expect(formatted.isForgery).toBe(false);
     });
+
+    it('should format not-a-signature rejection', () => {
+      const result: ForgeryAnalysisResponse = {
+        similarity_score: 0,
+        is_forgery: true,
+        is_not_signature: true,
+        rejection_reason: 'input_not_a_signature',
+        threshold: 0.47,
+        anomaly_score: 12.5,
+        anomaly_threshold: 8.0,
+      };
+
+      const formatted = formatForgeryResult(result);
+
+      expect(formatted.isNotSignature).toBe(true);
+      expect(formatted.message).toContain('не похож на подпись');
+      expect(getForgeryColor(result)).toBe('text-amber-600');
+    });
   });
 
   describe('getForgeryColor', () => {
